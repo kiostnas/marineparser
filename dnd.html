@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>DND</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+	</style>
+</head>
+<body class="container-fluid">
+	<div id="drop-area" class="drop-area">
+		<form>
+			<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+			<br>
+			<input type="file" id="fileElem" multiple accept="*" class="fileElem">
+			<label class="button" for="fileElem">Select some files</label>
+		</form>
+	</div>
+</body>
+
+<script type="text/javascript" src="./js/Misc.js"></script>
+<script type="text/javascript">
+	DNDLocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		console.log(files);
+	});
+</script>
+</html>
