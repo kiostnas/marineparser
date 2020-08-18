@@ -26,26 +26,70 @@
 			color: black;
 			cursor: pointer;
 		}
+		.btnDraw {
+			display: none;
+		}
 	</style>
 </head>
 <body class="container-fluid">
-	<div id="drop-area" class="drop-area">
-		<form>
-			<span>Upload multiple files with the file dialog or by dragging and dropping</span>
-			<br>
-			<input type="file" id="fileElem" multiple accept="*" class="fileElem">
-			<label class="button" for="fileElem">Select some files</label>
-		</form>
+	<div id="page-wrapper">
+		<div id="areaFileGroup"></div>
+
+		<h1>Hello this is a title</h1>
+		<span><button class="btnDraw" onclick="parseTest()">Parse</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept="*" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div>
+		<canvas id="canvas" width="1000" height="1000"></canvas>
+		<span id="areaText" style="width: 500px; height: 500; display: inline-block; border-style: dotted;"></div>
 	</div>
 </body>
 
 <script type="text/javascript" src="./js/Misc.js"></script>
-<script type="text/javascript">
+<script type="module">
+	import DNDFileList from './jsm/DNDFileList.js'
+	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
+	
 	DNDLocalFile(document.getElementById('drop-area'), (files) => {
 		// -- Hide drop area
 		document.getElementById('drop-area').style.display = 'none';
 
-		console.log(files);
+		// -- TODO must change the file name
+		const dndFL = new DNDFileList(['any']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			// -- Create array buffer Class
+			window.fileRead = ab;
+
+			// -- show buttons
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+		});
 	});
+
+	window.parseTest = () => {
+		console.log(window.fileRead);
+		alert(window.fileRead.byteLength);
+
+		const txtP = document.getElementById('areaText');
+		txtP.innerText = `File Read : ${window.fileRead.byteLength} bytes`;
+	}
 </script>
 </html>

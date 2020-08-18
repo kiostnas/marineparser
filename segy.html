@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>SegY file parser</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+		.btnDraw {
+			display: none;
+		}
+	</style>
+</head>
+<body class="container-fluid">
+	<div id="page-wrapper">
+		<div id="areaFileGroup"></div>
+
+		<h1>SegY file parser</h1>
+		<span><button class="btnDraw" onclick="drawSegy()">SegY</button></span>
+		<span><button class="btnDraw" onclick="slowSegY()">Slow</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept=".sgy,.segy" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div>
+		<canvas id="canvas" width="1000" height="1000"></canvas>
+		<span id="areaText" style="width: 500px; height: 500; display: inline-block; border-style: dotted;"></div>
+	</div>
+</body>
+
+<script type="text/javascript" src="./js/Misc.js"></script>
+<script type="module">
+	import DNDFileList from './jsm/DNDFileList.js'
+	import {SegY} from './jsm/SEGY.js'
+	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
+	
+	DNDLocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		// -- TODO must change the file name
+		const dndFL = new DNDFileList(['sgy', 'segy']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			// -- Create array buffer Class
+			window.fileRead = new SegY(ab);
+
+			// -- show buttons
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+		});
+	});
+
+	window.drawSegy = () => {
+		const MAX_COLOR = 1000; // -- No idea
+		const txtP = document.getElementById('areaText');
+		
+		const c = new Canvas2DPixel('canvas');
+		c.newImage();
+
+		const segy = window.fileRead;
+		const r = segy.parseDetail();
+
+		// -- Text
+		txtP.innerText = segy.getPrettyPrintBinHeader();
+
+		// -- Draw til x 1000
+		const maxY = r.binHeader.numSamplePTrace;
+		let len = r.traces.length < 1000 ? r.traces.length : 1000;
+		const start = new Date().getTime();
+		for(let i = 0; i < len; i++) {
+			const item = r.traces[i];
+
+			item.data.forEach((data, py) => {
+				const canvasY = ~~(py / maxY * c.h);
+				const color = ~~(data / MAX_COLOR * 255);
+				const grayColor = 0x88000000 | color << 16 | color << 8 | color;
+				c.draw32(i, canvasY, grayColor);
+			});
+		}
+
+		c.putImage();
+		const end = new Date().getTime();
+		console.log(`${end - start}ms`);
+		console.log(r);
+	}
+
+	window.slowSegY = async () => {
+		const MAX_COLOR = 1000; // -- No idea
+		const txtP = document.getElementById('areaText');
+		
+		const c = new Canvas2DPixel('canvas');
+		c.newImage();
+
+		const segy = window.fileRead;
+		const r = segy.parseDetail();
+
+		// -- Text
+		txtP.innerText = segy.getPrettyPrintBinHeader();
+
+		// -- Draw til x 1000
+		const maxY = r.binHeader.numSamplePTrace;
+		let len = r.traces.length < 1000 ? r.traces.length : 1000;
+		for(let i = 0; i < len; i++) {
+			const item = r.traces[i];
+
+			item.data.forEach((data, py) => {
+				const canvasY = ~~(py / maxY * c.h);
+				const color = ~~(data / MAX_COLOR * 255);
+				const grayColor = 0x88000000 | color << 16 | color << 8 | color;
+				c.draw32(i, canvasY, grayColor);
+			});
+
+			c.putImage();
+			await sleep(1);
+		}
+	}
+
+	window.sleep = (ms) => {
+		return new Promise(resolve => setTimeout(resolve, ms));
+	}
+</script>
+</html>

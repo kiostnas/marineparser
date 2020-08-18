@@ -11,6 +11,14 @@ export default class EndianDataView extends DataView {
 		this.littleEndian = little;
 	}
 
+	setParseOffset(offset) {
+		this.parseOffset = offset;
+	}
+
+	addParseOffset(v) {
+		this.parseOffset = this.parseOffset + v;
+	}
+
 	getInt16(byteOffset) {
 		return super.getInt16(byteOffset, this.littleEndian);
 	}
@@ -48,9 +56,11 @@ export default class EndianDataView extends DataView {
 		fn['U1'] = [this.getUint8.bind(this), 1];
 		fn['U2'] = [this.getUint16.bind(this), 2];
 		fn['U4'] = [this.getUint32.bind(this), 4];
+		fn['U8'] = [this.getBigUint64.bind(this), 8];
 		fn['I1'] = [this.getInt8.bind(this), 1];
 		fn['I2'] = [this.getInt16.bind(this), 2];
 		fn['I4'] = [this.getInt32.bind(this), 4];
+		fn['I8'] = [this.getBigInt64.bind(this), 8];
 		fn['F4'] = [this.getFloat32.bind(this), 4];
 		fn['F8'] = [this.getFloat64.bind(this), 8];
 
@@ -113,6 +123,14 @@ export default class EndianDataView extends DataView {
 
 	saveDetail(parsedDetail) {
 		this.parsedDetail = parsedDetail;
+	}
+
+	getBrief() {
+		return this.parsedBrief;
+	}
+
+	getDetail() {
+		return this.parsedDetail;
 	}
 }
 
