@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Simrad EK80</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+		.btnDraw {
+			display: none;
+		}
+	</style>
+</head>
+<body class="container-fluid">
+	<div id="page-wrapper">
+		<div id="areaFileGroup"></div>
+
+		<h1>EK80 raw data parser</h1>
+		<span><button class="btnDraw" onclick="parseTest()">Parse</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept="*" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div>
+		<canvas id="canvas" width="1000" height="1000"></canvas>
+		<span id="areaText" style="width: 500px; height: 500; display: inline-block; border-style: dotted;"></div>
+	</div>
+</body>
+
+<script type="text/javascript" src="./js/Misc.js"></script>
+<script type="module">
+	import DNDFileList from './jsm/DNDFileList.js'
+	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
+	import {SimradEK80Raw, SimradEK80RawBatch2020} from './jsm/SimradEK80.js';
+	
+	DNDLocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		// -- TODO must change the file name
+		const dndFL = new DNDFileList(['raw', 'idx']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			const ek80 = new SimradEK80RawBatch2020(ab);
+			// -- Create array buffer Class
+			window.fileRead = ek80;
+
+			// -- show buttons
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+		});
+	});
+
+	window.parseTest = () => {
+		console.log(window.fileRead);
+		fileRead.parseBrief(0);
+		const results = fileRead.batchSplitDataGrams();
+
+
+		console.log(results.counts);
+		// const listRaw3 = fileRead.batchParseChannel('WBT 545585-15 ES18');
+		const listRaw3 = fileRead.batchParseChannel('WBT 545598-15 ES333-7C');
+
+		listRaw3.forEach((raw3) => {
+			const samples = raw3.parsedDetail.samples;
+			const listValues = [];
+			const shrinkMax = 15;
+			let listShrink = [];
+			for(let i = 0; i <= samples.length; i = i + 8) {
+				// -- to decibel
+				const v = 20 * (Math.log(samples[i]) / Math.log(10));
+				listShrink.push(v);
+
+				if(shrinkMax === listShrink.length) {
+					let max = -1000;
+					listShrink.forEach((v) => {
+						if(!isNaN(v) && v > max) {
+							max = v;
+						}
+					});
+
+					listShrink = [];
+					listValues.push(max);
+				}
+			}
+			raw3.parsedDetail.values = listValues;
+			// raw3.parsedDetail.samples = undefined; // -- free
+		});
+
+		console.log(listRaw3);
+
+		// -- Draw
+		const c = new Canvas2DPixel('canvas');
+		c.newImage();
+
+		listRaw3.forEach((raw3, x) => {
+			raw3.parsedDetail.values.forEach((v, k) => {
+				const canvasY = k;
+				const color = v > 0 ? 0 : (~~(v / -100) * 255);
+				const grayColor = 0xFF000000 | color << 16 | color << 8 | color;
+				c.draw32(x, canvasY, grayColor);
+			});
+		});
+
+		c.putImage();
+
+		// const txtP = document.getElementById('areaText');
+		// txtP.innerText = `File Read : ${window.fileRead.byteLength} bytes`;
+	}
+</script>
+</html>
