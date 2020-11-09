@@ -580,10 +580,7 @@ class EMAllBatch2020 extends EMAll {
 			i++;
 		}
 
-		console.log(`Count Types`);
-		console.log(typesCount);
-
-		console.log(i);
+		return typesCount;
 	}
 
 	findNearestPosition(date, time) {
@@ -689,7 +686,9 @@ class EMAllBatch2020 extends EMAll {
 	// -- reference it and make your own code
 	batch20200607() {
 		console.log(new Date());
-		this.batchSplitDataGrams();
+		const types = this.batchSplitDataGrams();
+		console.log('Count Types')
+		console.log(types);
 		console.log(new Date());
 		this.referenceXYZWithPosition();
 		console.log(new Date());
@@ -705,6 +704,33 @@ class EMAllBatch2020 extends EMAll {
 		console.log(minMax);
 
 		return minMax;
+	}
+
+	batch20201109() {
+		console.log(new Date());
+		const types = this.batchSplitDataGrams();
+		console.log('Count Types')
+		console.log(types);
+		console.log(new Date());
+		this.referenceXYZWithPosition();
+		console.log(new Date());
+		this.getXYZSource().forEach((item) => {
+			item.xyz = item.parseWithPosition();
+		});
+		console.log(new Date());
+
+		console.log(this.getXYZSource());
+
+		const minMax = this.getMinMaxXYZ();
+
+		const result = {
+			types: types,
+			minmax: minMax
+		}
+
+		console.log(minMax);
+
+		return result;
 	}
 }
 

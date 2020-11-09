@@ -30,10 +30,18 @@
 		.btnDraw {
 			display: none;
 		}
+
+		.info-box {
+			display: block;
+			width: 500px;
+			height: 350px;
+			border-style: solid;
+			border-width: 1px
+		}
 	</style>
 </head>
-<body class="container-fluid">
-	<div id="page-wrapper">
+<body>
+	<div>
 		<div id="areaFileGroup"></div>
 
 		<h1>Kongsberg MBES file parser</h1>
@@ -51,9 +59,15 @@
 		</div>
 	</div>
 
-	<div>
+	<div style="align-items: top; display: inline-flex;">
 		<canvas id="canvas" width="1000" height="1000"></canvas>
-		<span id="areaText" style="width: 500px; height: 500; display: inline-block; border-style: dotted;"></div>
+		<div style="display: flex; flex-direction: column">
+			<span id="areaTextInfo" class="info-box"></span>
+			<span id="areaText" class="info-box" style="height: 240px"></span>
+			<div id="areaItems" class="info-box" style="height: 200px;">
+				<button onclick="console.log(itemLines)">log Info</button>
+			</div>
+		</div>
 	</div>
 </body>
 
@@ -132,16 +146,49 @@
 		});
 	});
 
+	// -- set count type information
+	function setInfo(obj) {
+		const txtInfo = document.getElementById('areaTextInfo');
+
+		const str = [];
+		for(const [k, v] of Object.entries(obj)) {
+			if('invalid' === k) {
+				for(const [ik, iv] of Object.entries(obj[k])) {
+					str.push(`Invalid[${ik}] : ${iv}`);
+				}
+			} else {
+				str.push(`${k}: ${v}`);
+			}
+		}
+
+		txtInfo.innerText = str.join('\n');
+	}
+
+	// -- draw parsedDetail object line by line
+	function drawItem(item) {
+		const ts = item.getTimestamp().toISOString();
+		const d = item.parsedDetail;
+		const posD = item.referencedPos.parsedDetail;
+		const line = `[${d.pingCounter}] ${ts}, ${d.numValid} / ${d.numBeams}, ${~~d.freq}hz, at ${item.referencedPos.getPositionStr()}, ${posD.speed}cm/s`;
+
+		window.itemLines.push(line);
+	}
+
 	window.drawTest2D = () => {
-		const minMax = fileRead.batch20200607();
+		const result = fileRead.batch20201109();
+		const minMax = result.minmax;
+
+		setInfo(result.types);
 
 		const c = new Canvas2DPixel('canvas');
 		c.newImage();
+		window.itemLines = [];
 
 		let i = 0;
 
 		const start = new Date().getTime();
 		fileRead.getXYZSource().forEach((item) => {
+			drawItem(item);
 			item.xyz.forEach((xyz) => {
 				if(i > 100) {
 					// return;
@@ -166,15 +213,20 @@
 	}
 
 	window.drawTest2D3px = () => {
-		const minMax = fileRead.batch20200607();
+		const result = fileRead.batch20201109();
+		const minMax = result.minmax;
+
+		setInfo(result.types);
 
 		const start = new Date().getTime();
 		const c = new Canvas2DPixel('canvas');
 		c.newImage();
+		window.itemLines = [];
 
 		let i = 0;
 
 		fileRead.getXYZSource().forEach((item) => {
+			drawItem(item);
 			item.xyz.forEach((xyz) => {
 				if(i > 100) {
 					// return;
@@ -201,12 +253,17 @@
 
 	// -- Slowly
 	window.drawTest2DSlow = () => {
-		const minMax = fileRead.batch20200607();
+		const result = fileRead.batch20201109();
+		const minMax = result.minmax;
+
+		setInfo(result.types);
+
 		const txtP = document.getElementById('areaText');
 
 		const start = new Date().getTime();
 		const c = new Canvas2DPixel('canvas');
 		c.newImage();
+		window.itemLines = [];
 
 		let i = 0;
 		let timeInterval = 10;
@@ -217,7 +274,7 @@
 			// -- Draw Text
 			const detail = data.parsedDetail;
 			const line = [
-				`Date: ${data.getTimestamp()}`,
+				`Date: ${data.getTimestamp().toISOString()}`,
 				`Pos: ${data.referencedPos.getPositionStr()}`,
 				`Model / Serial: ${detail.model} / ${detail.serial}`,
 				`Ping Counter in File: ${i + 1} / ${listXYZSrc.length}`,
@@ -228,6 +285,8 @@
 				`SoundSpeed: ${detail.ss / 10}m/s`
 			]
 			txtP.innerText = line.join('\n');
+
+			drawItem(data);
 
 			data.xyz.forEach((xyz) => {
 				const latV = minMax.lat.max - minMax.lat.min;
