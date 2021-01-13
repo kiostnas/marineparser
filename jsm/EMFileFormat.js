@@ -1,5 +1,6 @@
 import EndianDataView from './EndianDataView.js';
 import GeoSpatial from './GeoSpatial.js';
+import MPLog from './MPLog.js';
 
 // -- Class order critical
 export {EMEndianDataView, EMParamInstall, EMParamRuntime, EMPosition, EMXYZ88, EMAll};
@@ -707,28 +708,28 @@ class EMAllBatch2020 extends EMAll {
 	}
 
 	batch20201109() {
-		console.log(new Date());
+		const ts = new MPLog();
+		ts.now('start');
 		const types = this.batchSplitDataGrams();
-		console.log('Count Types')
-		console.log(types);
-		console.log(new Date());
+		ts.now('batch split');
 		this.referenceXYZWithPosition();
-		console.log(new Date());
+		ts.now('reference XYZ');
 		this.getXYZSource().forEach((item) => {
 			item.xyz = item.parseWithPosition();
 		});
-		console.log(new Date());
-
-		console.log(this.getXYZSource());
+		ts.now('parse with position xyz');
 
 		const minMax = this.getMinMaxXYZ();
+
+		ts.now('minmax');
+
+		console.log(types);
+		ts.outconsole();
 
 		const result = {
 			types: types,
 			minmax: minMax
 		}
-
-		console.log(minMax);
 
 		return result;
 	}
