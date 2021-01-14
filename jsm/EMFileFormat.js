@@ -654,6 +654,53 @@ class EMAllBatch2020 extends EMAll {
 		}
 	}
 
+	// -- min max and xyz(lat, lng, z) list
+	getShrinkXYZ() {
+		let minLat = 360, maxLat = -360;
+		let minLng = 360, maxLng = -360;
+		let minZ = 100000, maxZ = -1;
+
+		const list = [];
+
+		// -- Loop over
+		const src = this.getXYZSource();
+		src.forEach((item) => {
+			const line = [];
+			item.xyz.forEach((xyz) => {
+				// xyz.lat
+				// xyz.lng
+				// xyz.z
+				if(xyz.lat < minLat) {
+					minLat = xyz.lat;
+				}
+				if(xyz.lat > maxLat) {
+					maxLat = xyz.lat;
+				}
+				if(xyz.lng < minLng) {
+					minLng = xyz.lng;
+				}
+				if(xyz.lng > maxLng) {
+					maxLng = xyz.lng;
+				}
+				if(xyz.z < minZ) {
+					minZ = xyz.z;
+				}
+				if(xyz.z > maxZ) {
+					maxZ = xyz.z;
+				}
+				line.push([xyz.lat, xyz.lng, xyz.z]);
+			})
+			list.push(line);
+		});
+
+		return {
+			lat: {min: minLat, max: maxLat},
+			lng: {min: minLng, max: maxLng},
+			z: {min: minZ, max: maxZ},
+			xyz: list
+		}
+	}
+	
 	getXYZSource() {
 		const src = this.listXYZ.length > 0 ? this.listXYZ : this.listDD;
 		return src;
@@ -729,6 +776,39 @@ class EMAllBatch2020 extends EMAll {
 		const result = {
 			types: types,
 			minmax: minMax
+		}
+
+		return result;
+	}
+
+	batch20210114() {
+		const ts = new MPLog();
+		ts.now('start');
+		const types = this.batchSplitDataGrams();
+		ts.now('batch split');
+		this.referenceXYZWithPosition();
+		ts.now('reference XYZ');
+		this.getXYZSource().forEach((item) => {
+			item.xyz = item.parseWithPosition();
+		});
+		ts.now('parse with position xyz');
+
+		const shrink = this.getShrinkXYZ();
+		const minMax = {
+			lat: [shrink.lat.min, shrink.lat.max],
+			lng: [shrink.lng.min, shrink.lng.max],
+			z: [shrink.z.min, shrink.z.max],
+		};
+
+		ts.now('minmax');
+
+		console.log(types);
+		ts.outconsole();
+
+		const result = {
+			types: types,
+			minMax: minMax,
+			xyz: shrink.xyz
 		}
 
 		return result;

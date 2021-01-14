@@ -59,4 +59,32 @@ export default class GeoSpatial {
 		return GeoSpatial.destVincenty(lat, lng, bearing, distanceMeter);
 	}
 
+	/**
+	 * return in km
+	 * @param {https://stackoverflow.com/questions/13840516/how-to-find-my-distance-to-a-known-location-in-javascript} lon1 
+	 * @param {*} lat1 
+	 * @param {*} lon2 
+	 * @param {*} lat2 
+	 */
+	static distance(lon1, lat1, lon2, lat2) {
+		var R = 6371; // Radius of the earth in km
+		var dLat = GeoSpatial.toRad(lat2 - lat1);
+		var dLon = GeoSpatial.toRad(lon2 - lon1);
+		var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+				Math.cos(GeoSpatial.toRad(lat1)) * Math.cos(GeoSpatial.toRad(lat2)) * 
+				Math.sin(dLon/2) * Math.sin(dLon/2); 
+		var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+		var d = R * c; // Distance in km
+		return d;
+	  }
+
+	// -- things like D3
+	static scaleLinear = function(domain, range) {
+		const diffDomain = domain[1] - domain[0];
+		const diffRange = range[1] - range[0];
+
+		return (v) => {
+			return range[0] + diffRange * ((v - domain[0]) / diffDomain);
+		}
+	};
 }
