@@ -44,6 +44,20 @@ function DOMSetHtml(id, html) {
 	document.getElementById(id).innerHTML = html;
 }
 
+// -- DOMGetChecked('nameofinput')[0].value
+function DOMGetChecked(name) {
+	const elements = document.getElementsByName(name);
+	const checked = [];
+	for (let i = 0; i < elements.length; i++) {
+		const e = elements[i];
+		if(e.checked) {
+			checked.push(e);
+		}
+	}
+
+	return checked;
+}
+
 /**
  * 
  * @param {*} obj 
@@ -83,3 +97,36 @@ function matchAttributeExpression(exp) {
 	return m;
 }
 
+// -- file object to string
+async function readFileString(file) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			resolve(reader.result);
+		}
+	
+		reader.onerror = (e) => {
+			reject(e);
+		}
+
+		reader.readAsText(file);
+	})
+}
+
+// -- Only a chunk, just taste the file
+async function readFileChunkString(file) {
+	const s = file.stream();
+	const r = s.getReader();
+	const uint8array = await r.read();
+	return new TextDecoder().decode(uint8array.value.buffer);
+}
+
+// -- things like D3, moved from GeoSpatial
+function scaleLinear(domain, range) {
+	const diffDomain = domain[1] - domain[0];
+	const diffRange = range[1] - range[0];
+
+	return (v) => {
+		return range[0] + diffRange * ((v - domain[0]) / diffDomain);
+	}
+};

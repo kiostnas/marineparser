@@ -77,14 +77,4 @@ export default class GeoSpatial {
 		var d = R * c; // Distance in km
 		return d;
 	  }
-
-	// -- things like D3
-	static scaleLinear = function(domain, range) {
-		const diffDomain = domain[1] - domain[0];
-		const diffRange = range[1] - range[0];
-
-		return (v) => {
-			return range[0] + diffRange * ((v - domain[0]) / diffDomain);
-		}
-	};
 }
