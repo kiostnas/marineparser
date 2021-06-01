@@ -99,18 +99,21 @@
 		// -- Text
 		txtP.innerText = segy.getPrettyPrintBinHeader();
 
-		// -- Draw til x 1000
-		const maxY = r.binHeader.numSamplePTrace;
-		let len = r.traces.length < 1000 ? r.traces.length : 1000;
+		const scaleColor = scaleLinear([0, MAX_COLOR], [0, 255]);
+		const scaleX = r.traces.length < c.w ? (d) => d : scaleLinear([0, r.traces.length - 1], [0, c.w - 1]);
+		const scaleY = scaleLinear([0, r.binHeader.numSamplePTrace - 1], [0, c.h - 1]);
+
 		const start = new Date().getTime();
-		for(let i = 0; i < len; i++) {
+		for(let i = 0; i < r.traces.length; i++) {
 			const item = r.traces[i];
+			const posX = ~~scaleX(i);
 
 			item.data.forEach((data, py) => {
-				const canvasY = ~~(py / maxY * c.h);
-				const color = ~~(data / MAX_COLOR * 255);
-				const grayColor = 0x88000000 | color << 16 | color << 8 | color;
-				c.draw32(i, canvasY, grayColor);
+				
+				const posY = ~~scaleY(py);
+				const color = scaleColor(data);
+				const grayColor = 0x88000000 | (color << 16) | (color << 8) | color;
+				c.draw32(posX, posY, grayColor);
 			});
 		}
 
@@ -133,17 +136,20 @@
 		// -- Text
 		txtP.innerText = segy.getPrettyPrintBinHeader();
 
-		// -- Draw til x 1000
-		const maxY = r.binHeader.numSamplePTrace;
-		let len = r.traces.length < 1000 ? r.traces.length : 1000;
-		for(let i = 0; i < len; i++) {
+		const scaleColor = scaleLinear([0, MAX_COLOR], [0, 255]);
+		const scaleX = r.traces.length < c.w ? (d) => d : scaleLinear([0, r.traces.length - 1], [0, c.w - 1]);
+		const scaleY = scaleLinear([0, r.binHeader.numSamplePTrace - 1], [0, c.h - 1]);
+
+		for(let i = 0; i < r.traces.length; i++) {
 			const item = r.traces[i];
+			const posX = ~~scaleX(i);
 
 			item.data.forEach((data, py) => {
-				const canvasY = ~~(py / maxY * c.h);
-				const color = ~~(data / MAX_COLOR * 255);
-				const grayColor = 0x88000000 | color << 16 | color << 8 | color;
-				c.draw32(i, canvasY, grayColor);
+				const posY = ~~scaleY(py);
+				const color = scaleColor(data);
+				const grayColor = 0x88000000 | (color << 16) | (color << 8) | color;
+
+				c.draw32(posX, posY, grayColor);
 			});
 
 			c.putImage();

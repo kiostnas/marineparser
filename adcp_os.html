@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>ADCP - Teledyne RDI Ocean surveyor PD0</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+		.btnDraw {
+			display: none;
+		}
+	</style>
+</head>
+<body class="container-fluid">
+	<div id="page-wrapper">
+		<div id="areaFileGroup"></div>
+
+		<h1>ADCP - Ocean surveyor - PD0 Format - LTA, STA, ENR, ENS, ENX</h1>
+		<span><button class="btnDraw" onclick="parsePD0()">Parse</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept=".lta,.sta,.enr,.ens,.enx" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div id="areaResult" style="display: none">
+		<h4>Magnitude - mm/sec</h4>
+		<canvas id="canvasMagnitude" width="1000" height="200"></canvas>
+		<div style="display: inline-block; vertical-align: top;">
+			<span style="width: 200px; display: flex;">
+				<span style="flex: 1">
+					<input type="number" style="width: 3rem" id="numMagS" onchange="onChangeMagScale();draw2DMagnitude();" value="0" step="500">
+				</span>
+				<span style="flex: 1; text-align: right;">
+					<input type="number" style="width: 3rem" id="numMagE" onchange="onChangeMagScale();draw2DMagnitude();" value="8000" step="500">
+				</span>
+			</span>
+			<br>
+			<canvas id="canvasScaleMagnitude" width="200" height="10"></canvas>
+		</div>
+
+		<h4>Direction - degree</h4>
+		<canvas id="canvasDirection" width="1000" height="200"></canvas>
+		<div style="display: inline-block; vertical-align: top;">
+			<h5 style="text-align: center">N</h5>
+			<canvas id="canvasScaleDirection" width="100" height="100"></canvas>
+			<h5 style="text-align: center">S</h5>
+		</div>
+
+		<span id="areaText" style="width: 1000px; display: inline-block; border-style: dotted; vertical-align: top; padding: 0.5rem">
+		</span>
+		
+	</div>
+</body>
+
+<script type="text/javascript">
+	// -- https://css-tricks.com/converting-color-spaces-in-javascript/
+	function HSLToHex(h,s,l) {
+		s /= 100;
+		l /= 100;
+
+		let c = (1 - Math.abs(2 * l - 1)) * s,
+			x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+			m = l - c/2,
+			r = 0,
+			g = 0,
+			b = 0;
+
+		if (0 <= h && h < 60) {
+			r = c; g = x; b = 0;
+		} else if (60 <= h && h < 120) {
+			r = x; g = c; b = 0;
+		} else if (120 <= h && h < 180) {
+			r = 0; g = c; b = x;
+		} else if (180 <= h && h < 240) {
+			r = 0; g = x; b = c;
+		} else if (240 <= h && h < 300) {
+			r = x; g = 0; b = c;
+		} else if (300 <= h && h < 360) {
+			r = c; g = 0; b = x;
+		}
+
+		r = Math.round((r + m) * 255);
+		g = Math.round((g + m) * 255);
+		b = Math.round((b + m) * 255);
+
+		// !! notice it is not rgb, bgr !!
+		// let rgb = 0xFF000000 | r << 16 | g << 8 | b;
+		let bgr = 0xFF000000 | b << 16 | g << 8 | r;
+		return bgr;
+	}
+
+	const hslColor = [];
+	for(let i = 0; i <= 240; i++) {
+		hslColor.push(HSLToHex(i, 100, 50));
+	}
+
+	// -- Saving Color Map
+	window.hslColorMap = hslColor; // 0 ~ 240
+	// 0 is red, 240 is blue
+
+	const hslColor360Degree = [];
+	for(let i = 0; i <= 359; i++) {
+		hslColor360Degree.push(HSLToHex(i, 100, 50));
+	}
+	
+	// -- 0 ~ 359 red to red
+	window.hslColor360Map = hslColor360Degree;
+
+</script>
+
+<script type="text/javascript" src="./js/Misc.js"></script>
+<script type="module">
+	import DNDFileList from './jsm/DNDFileList.js'
+	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
+	import {TDPD0, PD0Variable} from './jsm/TDPD0.js';
+
+	// -- Draw color scale
+	// -- Magnitude
+	function drawScaleMagnitude() {
+		const c = new Canvas2DPixel('canvasScaleMagnitude');
+		c.newImage();
+
+		const scaleColor = scaleLinear([0, c.w], [0, 240]);
+
+		for(let index = 0; index < c.w; index++) {
+			const i = ~~scaleColor(index);
+			const color = hslColor[i];
+			for(let y = 0; y < 50; y++) {
+				c.draw32(index, y, color);
+			}
+		}
+		c.putImage();
+	}
+
+	// -- Direction
+	function drawScaleDirection() {
+		// -- http://jsfiddle.net/afkLY/2/
+		// document.getElementById('areaResult').style.display = 'block';
+		
+		// -- Direction circle
+		const scaleDirection = document.getElementById("canvasScaleDirection");
+		const ctxScaleDirection = scaleDirection.getContext("2d");
+
+		const CX = scaleDirection.width / 2,
+			CY = scaleDirection.height/ 2,
+			sx = CX,
+			sy = CY;
+
+		for(var i = 0; i < 360; i = i + 1){
+			const rad = i * (2 * Math.PI) / 360;
+			i = (360 + i + 90) % 360;
+			ctxScaleDirection.strokeStyle = "hsla("+i+", 100%, 50%, 1.0)";   
+			ctxScaleDirection.beginPath();
+			ctxScaleDirection.moveTo(CX, CY);
+			ctxScaleDirection.lineTo(CX + sx * Math.cos(rad), CY + sy * Math.sin(rad));
+			ctxScaleDirection.stroke();
+		}
+	}
+	drawScaleMagnitude();
+	drawScaleDirection();
+	// -- End of color scale
+
+	DNDLocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		// -- TODO must change the file name
+		const dndFL = new DNDFileList(['lta', 'sta', 'enr', 'ens', 'enx']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			const pd0 = new TDPD0(ab);
+			// -- Create array buffer Class
+			window.fileRead = pd0;
+
+			// -- show buttons
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+
+			// -- show result
+			document.getElementById('areaResult').style.display = 'block';
+
+			// -- Auto click
+			setTimeout(() => {
+				window.parsePD0();
+			}, 100);
+
+		});
+	});
+
+	window.parsePD0 = () => {
+		fileRead.batch20210527();
+
+		const result = fileRead.getBrief();
+
+		// -- To draw
+		window.onChangeMagScale();
+		window.draw2D();
+		window.refreshSummary();
+
+		console.log(result);
+		console.log(result[0].parsedDetail);
+
+		// const txtP = document.getElementById('areaText');
+		// txtP.innerText = `File Read : ${window.fileRead.byteLength} bytes`;
+	}
+
+	window.draw2DMagnitude = () => {
+		if(!fileRead) {
+			return;
+		}
+
+		const brief = fileRead.getBrief();
+
+		const c = new Canvas2DPixel('canvasMagnitude');
+		c.newImage();
+
+		const pd0Velocity = brief[0].getByHID(TDPD0.HID.VELOCITY);
+
+		const scaleX = scaleLinear([0, brief.length - 1], [0, c.w -1]);
+		const scaleY = scaleLinear([0, pd0Velocity.parsedDetail.md.length - 1], [0, c.h -1]); // -- Data usually 
+		const color = scaleLinear(window.scaleMag, [0, 240]);
+		let x = 0;
+
+		// -- To fill up the empty x dots
+		const testX = Math.ceil(scaleX(1) - scaleX(0));
+
+		brief.forEach((pd0) => {
+			const velocity = pd0.getByHID(TDPD0.HID.VELOCITY);
+
+			const posX = ~~scaleX(x);
+
+			velocity.parsedDetail.md.forEach((md, y) => {
+				const m = ~~md[0];
+				const posY = ~~scaleY(y);
+				if(TDPD0.INVALID_VALUE === m) {
+					// -- Draw black
+					for(let xFill = 0; xFill <= testX; xFill++) {
+						c.draw32triple(posX + (xFill * 2), posY, 0xFF000000);
+					}
+				} else {
+					const z = ~~color(m);
+
+					const rgba = hslColorMap[z];
+
+					for(let xFill = 0; xFill <= testX; xFill++) {
+						c.draw32triple(posX + (xFill * 2), posY, rgba);
+					}
+				}
+			});
+
+			x++;
+		});
+
+		c.putImage();
+	};
+
+	window.onChangeMagScale = () => {
+		let s = parseFloat(document.getElementById('numMagS').value);
+		let e = parseFloat(document.getElementById('numMagE').value);
+
+		s = isNaN(s) ? 0 : s;
+		e = isNaN(e) ? 2000 : e;
+
+		window.scaleMag = [s, e];
+	}
+
+	window.draw2DDirection = () => {
+		if(!fileRead) {
+			return;
+		}
+
+		const brief = fileRead.getBrief();
+
+		const c = new Canvas2DPixel('canvasDirection');
+		c.newImage();
+
+		const pd0Velocity = brief[0].getByHID(TDPD0.HID.VELOCITY);
+
+		const scaleX = scaleLinear([0, brief.length - 1], [0, c.w -1]);
+		const scaleY = scaleLinear([0, pd0Velocity.parsedDetail.md.length - 1], [0, c.h -1]); // -- Data usually 
+		// const color = scaleLinear([0, 359], [0, 240]);
+
+		let x = 0;
+		// -- To fill up the empty x dots
+		const testX = Math.ceil(scaleX(1) - scaleX(0));
+
+		brief.forEach((pd0) => {
+			const velocity = pd0.getByHID(TDPD0.HID.VELOCITY);
+
+			const posX = ~~scaleX(x);
+
+			velocity.parsedDetail.md.forEach((md, y) => {
+				const d = ~~md[1];
+				const posY = ~~scaleY(y);
+				if(TDPD0.INVALID_VALUE === d) {
+					// -- Draw black
+					for(let xFill = 0; xFill <= testX; xFill++) {
+						c.draw32triple(posX + (xFill * 2), posY, 0xFF000000);
+					}
+				} else {
+					const z = ~~(d);
+
+					const rgba = hslColor360Map[z];
+					for(let xFill = 0; xFill <= testX; xFill++) {
+						c.draw32triple(posX + (xFill * 2), posY, rgba);
+					}
+				}
+			});
+
+			x++;
+		});
+
+		c.putImage();
+	};
+
+	window.draw2D = () => {
+		window.draw2DMagnitude();
+		window.draw2DDirection();
+	}
+
+	window.refreshSummary = () => {
+		const src = window.fileRead;
+		const brief = src.getBrief();
+
+		const pd0First = brief[0];
+		const f0 = pd0First.getByHID(TDPD0.HID.FIXED).parsedDetail;
+		const v0 = pd0First.getByHID(TDPD0.HID.VARIABLE).parsedDetail;
+		const f0Str = [], v0Str = [], summStr = [];
+		const listTS = [], listTemp = [], listRoll = [], listPitch = [];
+
+		f0Str.push(`System : ${f0.sysCfgParsed.systemStr}`);
+		f0Str.push(`System.BeamAngle : ${f0.sysCfgParsed.beamAngleStr}`);
+		f0Str.push(`System.Face : ${f0.sysCfgParsed.beamFaceStr}`);
+		f0Str.push('F/W Ver : ' + parseFloat(`${f0.fwVer}.${f0.fwRev}`));
+		f0Str.push(`[EA] HDT Align : ${f0.hdtAli}&deg;`);
+		f0Str.push(`BIN 1 Dist : ${f0.bin1Dist} cm`);
+		f0Str.push(`[WF] Blank after transmit : ${f0.blankTrans} cm`);
+		f0Str.push(`Coord.Type : ${f0.coordParsed.typeStr}`);
+		f0Str.push(`Coord.Beam3 : ${f0.coordParsed.beam3Str}`);
+		f0Str.push(`Coord.Tilt : ${f0.coordParsed.tiltStr}`);
+		f0Str.push(`Coord.BinMapping : ${f0.coordParsed.binMappingStr}`);
+		f0Str.push(`No Beams : ${f0.noBeams}`);
+		f0Str.push(`[WN] No Cells : ${f0.noCells}`);
+		f0Str.push(`[WP] Pings / Ensemble : ${f0.pingsPEns}`);
+		f0Str.push(`Sensor Source : ${f0.sensorSrcParsed.join(' - ')}`);
+		f0Str.push('----'); // -- Empty
+
+		v0Str.push(`[ES] Salinity : ${v0.salinity}`);
+		v0Str.push(`[EC] Speed of sound : ${v0.soundSpeed}`);
+		v0Str.push(`[ED] Depth of transducer : ${v0.dptTrans / 10}meters`);
+		v0Str.push(`[EH] Heading : ${v0.hdt}&deg;`);
+		v0Str.push(`[EP] Pitch : ${v0.pitch}&deg;`);
+		v0Str.push(`[ER] Roll : ${v0.roll}&deg;`);
+		v0Str.push('----');
+
+		// v0Str.push(`Timestamp : ${v0.tsStr.toISOString()}`);
+
+		brief.forEach((pd0) => {
+			// const fixed = pd0.getByHID(TDPD0.HID.FIXED);
+			const variable = pd0.getByHID(TDPD0.HID.VARIABLE);
+			// const fd = fixed.parsedDetail;
+			const vd = variable.parsedDetail;
+
+			listTS.push(pd0.getTimestamp());
+			listTemp.push(vd.temp);
+			listRoll.push(vd.roll);
+			listPitch.push(vd.pitch);
+		});
+
+		// -- I can just subtract last.ts with first.ts but... I just did it
+		let lastMS = 0;
+		const diffTS = [];
+		const avgTSms = listTS.forEach((ts) => {
+			if(0 < lastMS) {
+				diffTS.push(ts.getTime() - lastMS);
+			}
+
+			lastMS = ts.getTime();
+		});
+		
+		const avgTS = diffTS.reduce((a,b) => a + b, 0) / diffTS.length;
+		const maxT = Math.max(...listTemp);
+		const minT = Math.min(...listTemp);
+		const avgT = listTemp.reduce((a, b) => a + b, 0) / listTemp.length;
+		const maxR = Math.max(...listRoll);
+		const minR = Math.min(...listRoll);
+		const avgR = listRoll.reduce((a, b) => a + b, 0) / listRoll.length;
+		const maxP = Math.max(...listPitch);
+		const minP = Math.min(...listPitch);
+		const avgP = listPitch.reduce((a, b) => a + b, 0) / listPitch.length;
+
+		if(avgTS > 1000 * 60 * 10) {
+			summStr.push(`Ensemble - every ${~~(avgTS / 1000 / 60)}minutes`);
+		} else {
+			summStr.push(`Ensemble - every ${~~(avgTS / 1000)}seconds`);
+		}
+		summStr.push(`Temperature Min ${minT.toFixed(2)}&deg;C, Max ${maxT.toFixed(2)}&deg;C, Avg ${avgT.toFixed(2)}&deg;C`);
+		summStr.push(`Roll Min ${minR.toFixed(2)}&deg;, Max ${maxR.toFixed(2)}&deg;, Avg ${avgR.toFixed(2)}&deg;`);
+		summStr.push(`Pitch Min ${minP.toFixed(2)}&deg;, Max ${maxP.toFixed(2)}&deg;, Avg ${avgP.toFixed(2)}&deg;`);
+		summStr.push(`Timestamp : ${listTS[0].toISOString()} ~ ${listTS[listTS.length - 1].toISOString()}`);
+
+		const listStr = f0Str.concat(v0Str, summStr);
+
+		document.getElementById('areaText').innerHTML = listStr.join('<br/>');
+
+	}
+
+</script>
+</html>

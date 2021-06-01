@@ -70,7 +70,9 @@ export default class EndianDataView extends DataView {
 	}
 
 	// -- [offset] -> starts from this.parseOffset - starts from 0
+	// -- TODO Object to Map, Object does not preserve the order
 	parse(struct, offset) {
+		const me = this;
 		if(undefined !== offset && 0 <= offset) {
 			this.parseOffset = offset;
 		}
@@ -83,31 +85,90 @@ export default class EndianDataView extends DataView {
 		const fn = this.mapParser;
 		const result = {};
 
-		Object.keys(struct).forEach((key) => {
-			const value = struct[key];
+		// -- Object Map
+		if(true !== struct instanceof Map) {
+			console.error(`map should be Map type, no other objects`);
+			return false;
+		}
+
+		struct.forEach((value, key) => {
 			const fc = fn[value][0];
 
 			if('function' === typeof fc) {
-				result[key] = fc(this.parseOffset);
-				this.parseOffset = this.parseOffset + fn[value][1];
+				result[key] = fc(me.parseOffset);
+				me.parseOffset = me.parseOffset + fn[value][1];
 			}
 		});
+
+		return result;
+
+
+		// Object.keys(struct).forEach((key) => {
+		// 	const value = struct[key];
+		// 	const fc = fn[value][0];
+
+		// 	if('function' === typeof fc) {
+		// 		result[key] = fc(this.parseOffset);
+		// 		this.parseOffset = this.parseOffset + fn[value][1];
+		// 	}
+		// });
+
+		// return result;
+	}
+
+	/**
+	 * returns in array
+	 * @param {*} type U1, U2..
+	 * @param {*} count 1 2 ~ number of type
+	 */
+	parseArray(type, count, offset) {
+		const me = this;
+		if(undefined !== offset && 0 <= offset) {
+			this.parseOffset = offset;
+		}
+
+		if(isNaN(count)) {
+			console.log(`Invalid count ${count} should be number`);
+			return false;
+		}
+
+		const fn = this.mapParser;
+		const result = [];
+
+		const fc = fn[type][0];
+		const fcLen = fn[type][1];
+
+		if('function' !== typeof fc) {
+			console.log(`Invalid type ${type} should be in list`);
+			return false;
+		}
+
+		for (let index = 0; index < count; index++) {
+			const v = fc(this.parseOffset);
+			result.push(v);
+			this.addParseOffset(fcLen);
+		}
 
 		return result;
 	}
 
 	calcLengthStruct(struct) {
-		let resultBytes = 0;
+		// -- Object Map
+		if(true !== struct instanceof Map) {
+			console.error(`map should be Map type, no other objects`);
+			return false;
+		}
 
-		Object.keys(struct).forEach((key) => {
-			const value = struct[key];
-			if(this.mapParser.hasOwnProperty(value)) {
-				const byte = this.mapParser[value][1];
-				resultBytes = resultBytes + byte;
-			}
+		let sum = 0;
+
+		const fn = this.mapParser;
+
+		struct.forEach((value, key) => {
+			const counts = fn[value][1];
+			sum = sum + counts;
 		});
 
-		return resultBytes;
+		return sum;
 	}
 
 	// -- Means Uint8Array

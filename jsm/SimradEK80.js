@@ -11,9 +11,9 @@ class SimradEK80EndianView extends EndianDataView {
 	}
 
 	parseBrief(startOffset) {
-		const map = {
-			length: 'U4',
-		};
+		const map = new Map([
+			['length', 'U4'],
+		]);
 
 		// -- Get the length at first
 		const s = this.parse(map, startOffset);
@@ -68,12 +68,13 @@ class SimradEK80XML0 extends SimradEK80EndianView {
 // -- Class for RAW3
 class SimradEK80Raw3 extends SimradEK80EndianView {
 	static BYTE_CHANNEL_ID = 128;
-	static STRUCT_RAW3 = {
-		dataTypeValue: 'U2',
-		spare: 'U2',
-		offset: 'I4',
-		count: 'I4',
-	};
+	static STRUCT_RAW3 = new Map([
+		['dataTypeValue', 'U2'],
+		['spare', 'U2'],
+		['offset', 'I4'],
+		['count', 'I4'],
+	]);
+	
 
 	static BIT_DATA_TYPE = {
 		POWER: 1,

@@ -249,9 +249,9 @@
 		const width = ~~(x / PtM);
 		const height = ~~(y / PtM);
 
-		const scaleX = GeoSpatial.scaleLinear(minMax.lng, [0, width]);
-		const scaleY = GeoSpatial.scaleLinear(minMax.lat, [0, height]);
-		const scaleZ = GeoSpatial.scaleLinear(minMax.z, [0, 300]);
+		const scaleX = scaleLinear(minMax.lng, [0, width]);
+		const scaleY = scaleLinear(minMax.lat, [0, height]);
+		const scaleZ = scaleLinear(minMax.z, [0, 300]);
 
 		const c = new Canvas2DPixel('canvas');
 		c.newImage();

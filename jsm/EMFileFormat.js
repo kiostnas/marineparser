@@ -41,17 +41,17 @@ class EMEndianDataView extends EndianDataView {
 }
 
 class EMParamInstall extends EMEndianDataView {
-	static STRUCT_INSTALL = {
-		length: 'U4',
-		stx: 'U1',
-		type: 'U1',
-		model: 'U2',
-		date: 'U4',
-		time: 'U4',
-		lineNo: 'U2',
-		serial: 'U2',
-		serial2ndSonar: 'U2',
-	}
+	static STRUCT_INSTALL = new Map([
+		['length', 'U4'],
+		['stx', 'U1'],
+		['type', 'U1'],
+		['model', 'U2'],
+		['date', 'U4'],
+		['time', 'U4'],
+		['lineNo', 'U2'],
+		['serial', 'U2'],
+		['serial2ndSonar', 'U2'],
+	]);
 
 	parseDetail() {
 		const r = this.parse(EMParamInstall.STRUCT_INSTALL, 0);
@@ -74,43 +74,43 @@ class EMParamInstall extends EMEndianDataView {
 }
 
 class EMParamRuntime extends EMEndianDataView {
-	static STRUCT_RUNTIME = {
-		length: 'U4',
-		stx: 'U1',
-		type: 'U1',
-		model: 'U2',
-		date: 'U4',
-		time: 'U4',
-		pingCounter: 'U2',
-		serial: 'U2',
-		operatorStationStatus: 'U1',
-		PUStatus: 'U1',
-		BSPStatus: 'U1',
-		SHTStatus: 'U1', // Sonar head or transceiver status
-		mode: 'U1',
-		filterID: 'U1',
-		minDepth: 'U2', // meter
-		maxDepth: 'U2', // meter
-		absorbCoef: 'U2', // meter 0.01dB/km
-		txPulseLen: 'U2', // micro-seconds
-		txBeamWidth: 'U2', // 0.1 degrees
-		txPower: 'I1', // transmit power re maximum in dB
-		rxBeamWidth: 'U1', // 0.1 degrees
-		rxBandwidth: 'U1', // 50Hz
-		rxGain: 'U1', // dB
-		TVGLawAng: 'U1', // TVG law crossover angle in degrees
-		srcSS: 'U1', // Source of sound speed at transducer
-		maxPortSwath: 'U2', // Maximum port swath width in m
-		beamSpacing: 'U1',
-		maxPortCoverage: 'U1', // degrees
-		yawPitchStable: 'U1', // Yaw and pitch stabilization mode
-		maxSTBDCoverage: 'U1',
-		maxSTBDSwath: 'U2', // meter
-		txTiltValue: 'I2', // Transmit along tilit in 0.1d
-		filterID2: 'U1',
-		etx: 'U1',
-		checksum: 'U2'
-	}
+	static STRUCT_RUNTIME = new Map([
+		['length', 'U4'],
+		['stx', 'U1'],
+		['type', 'U1'],
+		['model', 'U2'],
+		['date', 'U4'],
+		['time', 'U4'],
+		['pingCounter', 'U2'],
+		['serial', 'U2'],
+		['operatorStationStatus', 'U1'],
+		['PUStatus', 'U1'],
+		['BSPStatus', 'U1'],
+		['SHTStatus', 'U1'], // Sonar head or transceiver status
+		['mode', 'U1'],
+		['filterID', 'U1'],
+		['minDepth', 'U2'], // meter
+		['maxDepth', 'U2'], // meter
+		['absorbCoef', 'U2'], // meter 0.01dB/km
+		['txPulseLen', 'U2'], // micro-seconds
+		['txBeamWidth', 'U2'], // 0.1 degrees
+		['txPower', 'I1'], // transmit power re maximum in dB
+		['rxBeamWidth', 'U1'], // 0.1 degrees
+		['rxBandwidth', 'U1'], // 50Hz
+		['rxGain', 'U1'], // dB
+		['TVGLawAng', 'U1'], // TVG law crossover angle in degrees
+		['srcSS', 'U1'], // Source of sound speed at transducer
+		['maxPortSwath', 'U2'], // Maximum port swath width in m
+		['beamSpacing', 'U1'],
+		['maxPortCoverage', 'U1'], // degrees
+		['yawPitchStable', 'U1'], // Yaw and pitch stabilization mode
+		['maxSTBDCoverage', 'U1'],
+		['maxSTBDSwath', 'U2'], // meter
+		['txTiltValue', 'I2'], // Transmit along tilit in 0.1d
+		['filterID2', 'U1'],
+		['etx', 'U1'],
+		['checksum', 'U2'],
+	]);
 
 	// -- TODO Later on
 	static STRUCT_RUNTIME_DESC = {
@@ -131,24 +131,24 @@ class EMParamRuntime extends EMEndianDataView {
 }
 
 class EMPosition extends EMEndianDataView {
-	static STRUCT_POSITION = {
-		length: 'U4',
-		stx: 'U1',
-		type: 'U1',
-		model: 'U2',
-		date: 'U4',
-		time: 'U4',
-		positionCounter: 'U2',
-		serial: 'U2',
-		lat: 'I4',
-		lng: 'I4',
-		measurePosFixQ: 'U2',
-		speed: 'U2',
-		course: 'U2',
-		heading: 'U2',
-		posSysDesc: 'U1',
-		numInput: 'U1'
-	}
+	static STRUCT_POSITION = new Map([
+		['length', 'U4'],
+		['stx', 'U1'],
+		['type', 'U1'],
+		['model', 'U2'],
+		['date', 'U4'],
+		['time', 'U4'],
+		['positionCounter', 'U2'],
+		['serial', 'U2'],
+		['lat', 'I4'],
+		['lng', 'I4'],
+		['measurePosFixQ', 'U2'],
+		['speed', 'U2'],
+		['course', 'U2'],
+		['heading', 'U2'],
+		['posSysDesc', 'U1'],
+		['numInput', 'U1'],
+	]);
 
 	parseDetail() {
 		const r = this.parse(EMPosition.STRUCT_POSITION, 0);
@@ -183,44 +183,44 @@ class EMPosition extends EMEndianDataView {
 }
 
 class EMXYZ88 extends EMEndianDataView {
-	static STRUCT_XYZ_HEAD = {
-		length: 'U4',
-		stx: 'U1',
-		type: 'U1',
-		model: 'U2',
-		date: 'U4',
-		time: 'U4',
-		pingCounter: 'U2',
-		serial: 'U2',
-		heading: 'U2',
-		ss: 'U2',
-		txTRDepth: 'F4', // meter
-		numBeams: 'U2',
-		numValid: 'U2',
-		freq: 'F4', // Hz, Sampling frequency
-		info: 'U1', // Scanning info
-		spare01: 'U1',
-		spare02: 'U1',
-		spare03: 'U1',
-	}
+	static STRUCT_XYZ_HEAD = new Map([
+		['length', 'U4'],
+		['stx', 'U1'],
+		['type', 'U1'],
+		['model', 'U2'],
+		['date', 'U4'],
+		['time', 'U4'],
+		['pingCounter', 'U2'],
+		['serial', 'U2'],
+		['heading', 'U2'],
+		['ss', 'U2'],
+		['txTRDepth', 'F4'], // meter
+		['numBeams', 'U2'],
+		['numValid', 'U2'],
+		['freq', 'F4'], // Hz, Sampling frequency
+		['info', 'U1'], // Scanning info
+		['spare01', 'U1'],
+		['spare02', 'U1'],
+		['spare03', 'U1'],
+	]);
 
-	static STRUCT_XYZ_BODY = {
-		z: 'F4', // Depth
-		y: 'F4', // Acrosstrack, STBD Port
-		x: 'F4', // Alongtrack, Stern Ahead
-		windowLen: 'U2',
-		QFac: 'U1',
-		angAdj: 'I1',
-		dInfo: 'U1', // Detection information
-		cInfo: 'I1', // real time Cleaning information
-		reflectivity: 'I2', // 0.1dB
-	}
+	static STRUCT_XYZ_BODY = new Map([
+		['z', 'F4'], // Depth
+		['y', 'F4'], // Acrosstrack, STBD Port
+		['x', 'F4'], // Alongtrack, Stern Ahead
+		['windowLen', 'U2'],
+		['QFac', 'U1'],
+		['angAdj', 'I1'],
+		['dInfo', 'U1'], // Detection information
+		['cInfo', 'I1'], // real time Cleaning information
+		['reflectivity', 'I2'], // 0.1dB
+	]);
 
-	static STRUCT_XYZ_TAIL = {
-		spare04: 'U1',
-		etx: 'U1',
-		checksum: 'U2'
-	}
+	static STRUCT_XYZ_TAIL = new Map([
+		['spare04', 'U1'],
+		['etx', 'U1'],
+		['checksum', 'U2'],
+	]);
 
 	parseDetail() {
 		const r = this.parse(EMXYZ88.STRUCT_XYZ_HEAD, 0);
@@ -280,43 +280,43 @@ class EMXYZ88 extends EMEndianDataView {
 
 // -- Old xyz with em2000, em3000, em 3002, em1002, em300, em120
 class EMDepthDatagram extends EMEndianDataView {
-	static STRUCT_DD_HEAD = {
-		length: 'U4',
-		stx: 'U1',
-		type: 'U1',
-		model: 'U2',
-		date: 'U4',
-		time: 'U4',
-		pingCounter: 'U2',
-		serial: 'U2',
-		heading: 'U2',
-		ss: 'U2',
-		txTRDepth: 'U2', // cm : 14000 ~ 16000
-		maxNumBeams: 'U1', // maximum number of beams possible, 48 ~
-		numValid: 'U1', // 1 ~ 254
-		zRes: 'U1', // z Resolution in cm 1 ~ 254
-		xyRes: 'U1', // x and y resolution in cm 1 ~ 254
-		freq: 'U2', // Sampling rate in Hz 300 ~ 30000 or Depth diff between sonar heads in EM3000(S2)
-	}
+	static STRUCT_DD_HEAD = new Map([
+		['length', 'U4'],
+		['stx', 'U1'],
+		['type', 'U1'],
+		['model', 'U2'],
+		['date', 'U4'],
+		['time', 'U4'],
+		['pingCounter', 'U2'],
+		['serial', 'U2'],
+		['heading', 'U2'],
+		['ss', 'U2'],
+		['txTRDepth', 'U2'], // cm ', 14000 ~ 16000
+		['maxNumBeams', 'U1'], // maximum number of beams possible, 48 ~
+		['numValid', 'U1'], // 1 ~ 254
+		['zRes', 'U1'], // z Resolution in cm 1 ~ 254
+		['xyRes', 'U1'], // x and y resolution in cm 1 ~ 254
+		['freq', 'U2'], // Sampling rate in Hz 300 ~ 30000 or Depth diff between sonar heads in EM3000(S2)
+	]);
 
-	static STRUCT_DD_BODY = {
-		z: 'U2', // Depth, Unsigned 2 bytes for EM120, EM300, others Signed 2 bytes
-		y: 'I2', // Acrosstrack, STBD Port
-		x: 'I2', // Alongtrack, Stern Ahead
-		beamDeprAng: 'I2', // Beam depression angle in 0.01, -11000 ~ 11000
-		beamAzimAng: 'U2', // Beam azimuth angle in 0.01, 0 ~ 56999
-		range: 'U2', // one way travle time, 0 ~ 65534
-		QFac: 'U1',
-		len: 'U1', // length of detection window (samples/4) 1 ~ 254
-		reflectivity: 'I1', // 0.5dB, -20dB = 216
-		beamNum: 'U1' // Beam number 1 ~ 254
-	}
+	static STRUCT_DD_BODY = new Map([
+		['z', 'U2'], // Depth, Unsigned 2 bytes for EM120, EM300, others Signed 2 bytes
+		['y', 'I2'], // Acrosstrack, STBD Port
+		['x', 'I2'], // Alongtrack, Stern Ahead
+		['beamDeprAng', 'I2'], // Beam depression angle in 0.01, -11000 ~ 11000
+		['beamAzimAng', 'U2'], // Beam azimuth angle in 0.01, 0 ~ 56999
+		['range', 'U2'], // one way travle time, 0 ~ 65534
+		['QFac', 'U1'],
+		['len', 'U1'], // length of detection window (samples/4) 1 ~ 254
+		['reflectivity', 'I1'], // 0.5dB, -20dB = 216
+		['beamNum', 'U1'], // Beam number 1 ~ 254
+	]);
 
-	static STRUCT_DD_TAIL = {
-		depthOffsetM: 'I1', // transducer depth offset multiplier, -1 ~ +17
-		etx: 'U1',
-		checksum: 'U2'
-	}
+	static STRUCT_DD_TAIL = new Map([
+		['depthOffsetM', 'I1'], // transducer depth offset multiplier, -1 ~ +17
+		['etx', 'U1'],
+		['checksum', 'U2'],
+	]);
 
 	parseDetail() {
 		const r = this.parse(EMDepthDatagram.STRUCT_DD_HEAD, 0);
@@ -434,10 +434,10 @@ class EMAll extends EMEndianDataView {
 	};
 
 	// -- General Tail
-	static STRUCT_TAIL = {
-		etx: 'U1',
-		checksum: 'U2'
-	}
+	static STRUCT_TAIL = new Map([
+		['etx', 'U1'],
+		['checksum', 'U2'],
+	]);
 
 	static BYTE_STRUCT_TAIL = 3;
 
@@ -472,11 +472,11 @@ class EMAll extends EMEndianDataView {
 	}
 
 	parseBrief(startOffset) {
-		const map = {
-			length: 'U4',
-			stx: 'U1',
-			type: 'U1'
-		};
+		const map = new Map([
+			['length', 'U4'],
+			['stx', 'U1'],
+			['type', 'U1'],
+		]);
 
 		const r = this.parse(map, startOffset);
 		r.typeTitle = EMAll.getTypeTitle(r.type);
