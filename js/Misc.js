@@ -130,3 +130,50 @@ function scaleLinear(domain, range) {
 		return range[0] + diffRange * ((v - domain[0]) / diffDomain);
 	}
 };
+
+// -- Just holds scale functions
+// -- I need to know the domain and range sometimes
+class ScaleBox {
+	constructor() {
+		// -- Box
+		this.obj = {};
+	}
+
+	static ScaleLinear(domain, range) {
+		const diffDomain = domain[1] - domain[0];
+		const diffRange = range[1] - range[0];
+
+		return (v) => {
+			return range[0] + diffRange * ((v - domain[0]) / diffDomain);
+		}
+	};
+
+	// -- Domain - input, range - output
+	// -- domain : [], range : []
+	set(name, domain, range) {
+		const scale = ScaleBox.ScaleLinear(domain, range);
+		this.obj[name] = { domain: domain, range: range, scale: scale };
+	}
+
+	get(name, value) {
+		if (this.obj[name]) {
+			return this.obj[name].scale(value);
+		}
+
+		return false;
+	}
+
+	getDomain(name) {
+		if (this.obj[name]) {
+			return this.obj[name].domain;
+		}
+
+		return false;
+	}
+
+	getRange(name) {
+		if (this.obj[name]) {
+			return this.obj[name].range;
+		}
+	}
+}
