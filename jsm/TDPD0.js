@@ -1,6 +1,6 @@
 import EndianDataView from './EndianDataView.js';
 
-export { TDPD0, PD0, PD0Header, PD0Fixed, PD0Variable };
+export { TDPD0, PD0, PD0Header, PD0Fixed, PD0Variable, PD0Navigation };
 
 // -- Only one PD0
 // -- parsedBrief - header
@@ -55,10 +55,13 @@ class PD0 extends EndianDataView {
 	parseVelocity2D() {
 		const fixedInstance = this.getByHID(TDPD0.HID.FIXED);
 		const velocityInstance = this.getByHID(TDPD0.HID.VELOCITY);
+		const navigationInstance = this.getByHID(TDPD0.HID.NAV);
 
 		const r = velocityInstance.parseVelocity2D(fixedInstance.parsedDetail.coordParsed.type);
+		velocityInstance.parseMDNav(navigationInstance.parsedDetail.avgSpd, navigationInstance.parsedDetail.parsed.hdt);
 		// -- r maybe false
 	}
+
 
 	// -- Returning results, hid is object type TDPD0.HID.CORR
 	getByHID(hid) {
@@ -484,9 +487,10 @@ class PD0Variable extends PD0 {
 
 		month = month - 1;
 
-		const ms = hundredS / 10;
+		const ms = hundredS * 10;
 
-		return new Date(year, month, day, h, m, s, ms);
+		// return new Date(year, month, day, h, m, s, ms);
+		return new Date(Date.UTC(year, month, day, h, m, s, ms));
 	}
 
 	parseDetail() {
@@ -564,6 +568,19 @@ class PD0Velocity extends PD0 {
 		return [magnitude, direction];
 	}
 
+	// https://www.starpath.com/freeware/truewind.pdf
+	// -- TODO Verify it
+	static TrueWind(ws, wd, bs, bh) {
+		const tws1 = (bs * bs) + (ws * ws) - (2 * bs * ws * Math.cos(wd * Math.PI / 180));
+		const tws = Math.sqrt(tws1);
+
+		const beta = ((ws * ws) - (tws * tws) - (bs * bs)) / (2 * tws * bs);
+		const theta = Math.acos(beta);
+		const twd = bh + (theta * (180 / Math.PI));
+
+		return [tws, twd];
+	}
+
 	parseDetail() {
 		const hID = this.getUint16(0);
 		this.addParseOffset(2);
@@ -614,6 +631,28 @@ class PD0Velocity extends PD0 {
 			return false;
 		}
 	}
+
+	parseMDNav(shipSpd, shipHdt) {
+		if(!this.parsedDetail || !this.parsedDetail.md) {
+			console.error(`parseMDNav should be called after md has calculated`);
+			return false;
+		}
+
+		const mdNav = [];
+		this.parsedDetail.md.forEach((item) => {
+			if(TDPD0.INVALID_VALUE !== item[0]
+				&& TDPD0.INVALID_VALUE !== item[1]
+				) {
+					const md = PD0Velocity.TrueWind(item[0], item[1] - shipHdt + 180, shipSpd, shipHdt);
+					md[1] = md[1] % 360;
+					mdNav.push(md);
+				} else {
+					mdNav.push([TDPD0.INVALID_VALUE, TDPD0.INVALID_VALUE]);
+				}
+		});
+		this.parsedDetail.mdNav = mdNav;
+	}
+
 }
 
 class PD0Corr extends PD0 {
@@ -826,11 +865,197 @@ class PD0AmbientSoundProfile extends PD0 {
 	}
 }
 
+class PD0Navigation extends PD0 {
+	static NAV_DATA = new Map([
+		['hID', 'U2'], // 0x2000
+		['utcDay', 'U1'], // UTC Day
+		['utcMonth', 'U1'], // UTC Month
+		['utcYear', 'U2'], // UTC Year 07CF = 1999
+		['utcTimeFF', 'I4'], // UTC Time of first fix
+		['pcClockOffset', 'I4'], // PC Clock offset from UTC
+		['firstLat', 'U4'], // First Latitude
+		['firstLng', 'U4'], // First Longitude
+		['utcTimeLF', 'U4'], // UTC Time of last fix
+		['lastLat', 'U4'], // Last Latitude
+		['lastLng', 'U4'], // Last Longitude
+		['avgSpd', 'I2'], // Average Speed mm/sec signed
+		['avgTrackTrue', 'U2'], // Average Track True
+		['avgTrackMag', 'U2'], // Average Track magnetic
+		['SMG', 'U2'], // Speed Made good mm/sec signed
+		['DMG', 'U2'], // Direction Made good
+		['reserved1', 'U2'], // Reserved
+		['flags', 'U2'], // Flags
+		['reserved2', 'U2'], // Reserved
+		['noEns', 'U4'], // ADCP Ensemble number - TODO different from Variable leader noEns
+		['ensYear', 'U2'], // ADCP Ensemble Year
+		['ensDay', 'U1'], // ADCP Ensemble Day
+		['ensMonth', 'U1'], // ADCP Ensemble Month
+		['ensTime', 'U4'], // ADCP Ensemble Time
+		['pitch', 'I2'], // Pitch
+		['roll', 'I2'], // Roll
+		['hdt', 'U2'], // Heading
+		['numSpeedAvg', 'U2'], // Number of speed avg
+		['numTTAvg', 'U2'], // Number of True track avg
+		['numMTAvg', 'U2'], // Number of Mag track avg
+		['numHdtAvg', 'U2'], // Number of Heading avg
+		['numPRAvg', 'U2'], // Number of Pitch / Roll avg
+	]);
+
+	static DEG = 0.0055;
+	static POS = 8E-8;
+
+	static parseNavFlags(word) {
+		const strInvalid = [], strValid = [];
+		0 === (word & 0b00000000001) && strInvalid.push('Data not updated');
+		0 === (word & 0b00000000010) && strInvalid.push('PSN Invalid');
+		0 === (word & 0b00000000100) && strInvalid.push('Speed Invalid');
+		0 === (word & 0b00000001000) && strInvalid.push('Mag Track Invalid');
+		0 === (word & 0b00000010000) && strInvalid.push('True Track Invalid');
+		0 === (word & 0b00000100000) && strInvalid.push('Date/Time Invalid');
+		0 === (word & 0b00001000000) && strInvalid.push('SMG/DMG Invalid');
+		0 === (word & 0b00010000000) && strInvalid.push('Pitch/Roll Invalid');
+		0 === (word & 0b00100000000) && strInvalid.push('Heading Invalid');
+		0 === (word & 0b01000000000) && strInvalid.push('ADCP Time Invalid');
+		0 === (word & 0b10000000000) && strInvalid.push('Clock offset Time Invalid');
+
+		0 !== (word & 0b00000000001) && strValid.push('Data updated');
+		0 !== (word & 0b00000000010) && strValid.push('PSN Valid');
+		0 !== (word & 0b00000000100) && strValid.push('Speed Valid');
+		0 !== (word & 0b00000001000) && strValid.push('Mag Track Valid');
+		0 !== (word & 0b00000010000) && strValid.push('True Track Valid');
+		0 !== (word & 0b00000100000) && strValid.push('Date/Time Valid');
+		0 !== (word & 0b00001000000) && strValid.push('SMG/DMG Valid');
+		0 !== (word & 0b00010000000) && strValid.push('Pitch/Roll Valid');
+		0 !== (word & 0b00100000000) && strValid.push('Heading Valid');
+		0 !== (word & 0b01000000000) && strValid.push('ADCP Time Valid');
+		0 !== (word & 0b10000000000) && strValid.push('Clock offset Time Valid');
+
+		return {invalid: strInvalid, valid: strValid};
+	}
+
+	parseDetail() {
+		const r = this.parse(PD0Navigation.NAV_DATA, 0);
+
+		if(TDPD0.HID.NAV.code !== r.hID) {
+			console.error(`Invalid HID for Navigation(${TDPD0.HID.NAV.code.toString(16)}) != ${hID.toString(16)}`);
+			return false;
+		}
+
+		const parsed = {};
+
+		// -- Date
+		// -- Manual says its 0.01 but Last fix says 1e-4, values are very close, should be the same unit
+		const ffMS = r.utcTimeFF / 10;
+		const lfMS = r.utcTimeLF / 10;
+
+		const utcFF = new Date();
+		utcFF.setUTCFullYear(r.utcYear, r.utcMonth - 1, r.utcDay);
+		utcFF.setUTCMilliseconds(ffMS);
+
+		const utcLF = new Date();
+		utcLF.setUTCFullYear(r.utcYear, r.utcMonth - 1, r.utcDay);
+		utcLF.setUTCMilliseconds(lfMS);
+
+		parsed.utcFF = utcFF;
+		parsed.utcLF = utcLF;
+
+		// -- Ensemble time
+		const ensDate = new Date();
+		ensDate.setUTCFullYear(r.ensYear, r.ensMonth - 1, r.ensDay);
+		ensDate.setUTCMilliseconds(r.ensTime / 100);
+		parsed.ensDate = ensDate;
+		// -- TODO Later on
+		parsed.ensDateNote = 'Not verified if its utc or local based time';
+
+		// -- Position
+		parsed.lastPos = [r.lastLat * PD0Navigation.POS, r.lastLng * PD0Navigation.POS];
+		parsed.firstPos = [r.firstLat * PD0Navigation.POS, r.firstLng * PD0Navigation.POS];
+		parsed.avgTrackTrue = r.avgTrackTrue * PD0Navigation.DEG;
+		parsed.avgTrackMag = r.avgTrackMag * PD0Navigation.DEG;
+		parsed.DMG = r.DMG * PD0Navigation.DEG;
+
+		const flags = PD0Navigation.parseNavFlags(r.flags);
+		parsed.flagsInvalid = flags.invalid;
+		parsed.flagsValid = flags.valid;
+
+		parsed.hdt = r.hdt * PD0Navigation.DEG;
+		parsed.pitch = r.pitch * PD0Navigation.DEG;
+		parsed.roll = r.roll * PD0Navigation.DEG;
+		
+		r.parsed = parsed;
+
+		// -- Lots of info should be calculated and saved in 'parsed' but ensNum is not in there!
+		this.saveDetail(r);
+	}
+}
+
+class PD0BinFixedAttitude extends PD0 {
+	static BINFIXED_ATTITUDE_DATA = new Map([
+		['EF', 'U1'], // [EF] External Pitch roll scaling
+		['EH', 'U2'], // [EH] Fixed heading scaling
+		['EI', 'U2'], // [EI] Roll misalignment
+		['EJ', 'U2'], // [EJ] Pitch misalignment
+		['EP', 'U4'], // [EP] Pitch Roll coordinate frame
+		['EU', 'U1'], // [EU] Orientation
+		['EV', 'U2'], // [EV] Heading offset
+		['EZ', 'U8'], // [EZ] Sensor source
+	]);
+
+	parseDetail() {
+		const hID = this.getUint16(0);
+		this.addParseOffset(2);
+
+		if(TDPD0.HID.BINFIXED_ATTITUDE.code !== hID) {
+			console.error(`Invalid HID for Binary Fixed Attitude(${TDPD0.HID.BINFIXED_ATTITUDE.code.toString(16)}) != ${hID.toString(16)}`);
+			return;
+		}
+
+		const strEE = this.toAsciiString(2, 9);
+		this.addParseOffset(8);
+
+		const r = this.parse(PD0BinFixedAttitude.BINFIXED_ATTITUDE_DATA);
+		r.hID = hID;
+		r.EE = strEE;
+
+		this.saveDetail(r);
+	}
+
+}
+
+class PD0BinVariableAttitude extends PD0 {
+	parseDetail() {
+		const hID = this.getUint16(0);
+		this.addParseOffset(2);
+
+		// 3040 ~ 30FC
+		// if(TDPD0.HID.ATTITUDE.code !== hID) {
+		// 	console.error(`Invalid HID for Binary Attitude(${TDPD0.HID.ATTITUDE.code.toString(16)}) != ${hID.toString(16)}`);
+		// 	return;
+		// }
+
+		const listTypes = [];
+		for(let i = 1; i <= 8; i++) {
+			const group = this.parseArray('U2', 3 * 2);
+			listTypes.push(group);
+		}
+
+		const detail = {
+			hID: hID,
+			types: listTypes
+		};
+
+		this.saveDetail(detail);
+	}
+}
+
+
 export default class TDPD0 extends EndianDataView {
 	static HEADER_HID = 0x7F7F;
 
 	static UNHANDLED_STR = 'Unhandled string';
 	static INVALID_VALUE = -32768;
+
+	static HID_BINVAR_ATTITUDE = [0x3040, 0x30FC];
 
 	static HID = {
 		'FIXED': { code: 0x0000, title: 'Fixed Leader', cls: PD0Fixed },
@@ -843,10 +1068,13 @@ export default class TDPD0 extends EndianDataView {
 		'BT': { code: 0x0600, title: 'Bottom Track Data', cls: PD0BottomTrack },
 		'ASP': { code: 0x020C, title: 'Ambient Sound Profile', cls: PD0AmbientSoundProfile },
 		'MICROCAT': {code: 0x0800, title: 'MicroCAT Data'},
-		'UNKNOWN2000': {code: 0x2000, title: 'Unknown type 0x2000'},
-		'UNKNOWN3000': {code: 0x3000, title: 'Unknown type 0x3000'},
+		'NAV': {code: 0x2000, title: 'Binary Navigation Data', cls: PD0Navigation },
+		'BINFIXED_ATTITUDE': {code: 0x3000, title: 'Binary Fixed Attitude Data', cls: PD0BinFixedAttitude },
+		'BINVAR_ATTITUDE': {code: 0x3040, title: 'Binary Variable Attitude data', cls: PD0BinVariableAttitude},
+		// -- 3040 ~ 30FC Binary Variable Attitude data format
 		'UNKNOWN30E8': {code: 0x30e8, title: 'Unknown type 0x30E8'},
 		'UNKNOWN30D8': {code: 0x30d8, title: 'Unknown type 0x03D8'}, // found HI-18-12 OS38
+
 	}
 
 	static JudgetHID(uint16) {
@@ -854,6 +1082,11 @@ export default class TDPD0 extends EndianDataView {
 			if (item.code === uint16) {
 				return item;
 			}
+		}
+
+		// -- Binary Variable attitude
+		if(uint16 >= TDPD0.HID_BINVAR_ATTITUDE[0] && uint16 <= TDPD0.HID_BINVAR_ATTITUDE[1]) {
+			return TDPD0.HID.BINVAR_ATTITUDE;
 		}
 	}
 

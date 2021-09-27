@@ -50,18 +50,23 @@
 
 	<div id="areaResult" style="display: none">
 		<h4>Magnitude - mm/sec</h4>
-		<canvas id="canvasMagnitude" width="1000" height="200"></canvas>
+		<canvas id="canvasMagnitude" width="1000" height="200" onmousemove="onMouseMag(event)" onclick="onClickMag(event)"></canvas>
 		<div style="display: inline-block; vertical-align: top;">
 			<span style="width: 200px; display: flex;">
 				<span style="flex: 1">
 					<input type="number" style="width: 3rem" id="numMagS" onchange="onChangeMagScale();draw2DMagnitude();" value="0" step="500">
 				</span>
 				<span style="flex: 1; text-align: right;">
-					<input type="number" style="width: 3rem" id="numMagE" onchange="onChangeMagScale();draw2DMagnitude();" value="8000" step="500">
+					<input type="number" style="width: 3rem" id="numMagE" onchange="onChangeMagScale();draw2DMagnitude();" value="2000" step="500">
 				</span>
 			</span>
 			<br>
 			<canvas id="canvasScaleMagnitude" width="200" height="10"></canvas>
+			<br>
+			<p id="txtMagInfo1"></p>
+			<p id="txtMagInfo2"></p>
+			<p id="txtMagInfo3"></p>
+			<p id="txtMagInfo4"></p>
 		</div>
 
 		<h4>Direction - degree</h4>
@@ -138,7 +143,7 @@
 <script type="module">
 	import DNDFileList from './jsm/DNDFileList.js'
 	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
-	import {TDPD0, PD0Variable} from './jsm/TDPD0.js';
+	import {TDPD0, PD0Variable, PD0Navigation} from './jsm/TDPD0.js';
 
 	// -- Draw color scale
 	// -- Magnitude
@@ -146,7 +151,7 @@
 		const c = new Canvas2DPixel('canvasScaleMagnitude');
 		c.newImage();
 
-		const scaleColor = scaleLinear([0, c.w], [0, 240]);
+		const scaleColor = scaleLinear([0, c.w], [240, 0]);
 
 		for(let index = 0; index < c.w; index++) {
 			const i = ~~scaleColor(index);
@@ -252,20 +257,24 @@
 
 		const scaleX = scaleLinear([0, brief.length - 1], [0, c.w -1]);
 		const scaleY = scaleLinear([0, pd0Velocity.parsedDetail.md.length - 1], [0, c.h -1]); // -- Data usually 
-		const color = scaleLinear(window.scaleMag, [0, 240]);
+		const color = scaleLinear(window.scaleMag, [240, 0]);
 		let x = 0;
 
 		// -- To fill up the empty x dots
 		const testX = Math.ceil(scaleX(1) - scaleX(0));
+		window.mapMagnitude = [];
+		window.testX = testX;
 
 		brief.forEach((pd0) => {
 			const velocity = pd0.getByHID(TDPD0.HID.VELOCITY);
 
 			const posX = ~~scaleX(x);
+			mapMagnitude[posX] = [];
 
-			velocity.parsedDetail.md.forEach((md, y) => {
+			velocity.parsedDetail.mdNav.forEach((md, y) => {
 				const m = ~~md[0];
 				const posY = ~~scaleY(y);
+				mapMagnitude[posX][posY] = [x, y];
 				if(TDPD0.INVALID_VALUE === m) {
 					// -- Draw black
 					for(let xFill = 0; xFill <= testX; xFill++) {
@@ -323,7 +332,7 @@
 
 			const posX = ~~scaleX(x);
 
-			velocity.parsedDetail.md.forEach((md, y) => {
+			velocity.parsedDetail.mdNav.forEach((md, y) => {
 				const d = ~~md[1];
 				const posY = ~~scaleY(y);
 				if(TDPD0.INVALID_VALUE === d) {
@@ -436,7 +445,68 @@
 		const listStr = f0Str.concat(v0Str, summStr);
 
 		document.getElementById('areaText').innerHTML = listStr.join('<br/>');
+	}
 
+	window.onMouseMag = (e) => {
+		if(true === window.toggleMag) {
+			return;
+		}
+
+		// -- x, y is relative offset of canvas
+		const x = e.offsetX;
+		const y = e.offsetY;
+
+		// -- v is [col Number, row Number] of brief, where row is in md or mdNav
+		const v = window.findMapMagnitude(x, y);
+
+		const src = window.fileRead;
+		const brief = src.getBrief();
+
+		const colNum = v[0];
+		const rowNum = v[1];
+
+		const col = brief[colNum];
+		const pd0Variable = col.getByHID(TDPD0.HID.VARIABLE);
+		const pd0Velocity = col.getByHID(TDPD0.HID.VELOCITY);
+		const pd0Navigation = col.getByHID(TDPD0.HID.NAV);
+		
+		const variableLeader = pd0Variable.parsedDetail;
+		const velocity = pd0Velocity.parsedDetail.mdNav[rowNum];
+		const navigation = pd0Navigation.parsedDetail;
+
+		const vMag = velocity[0] === TDPD0.INVALID_VALUE ? '-Invalid-' : velocity[0].toFixed(2);
+		const vDir = velocity[1] === TDPD0.INVALID_VALUE ? '-Invalid-' : velocity[1].toFixed(2);
+
+		DOMSetHtml('txtMagInfo1', `${variableLeader.tsStr.toISOString()}`);
+
+		// -- create link to Google map
+		// https://www.google.com/maps?z=18&q=10.8061,106.7130
+		const linkFirst = `https://www.google.com/maps?z=6&q=${navigation.parsed.firstPos[0]},${navigation.parsed.firstPos[1]}`
+		const linkLast = `https://www.google.com/maps?z=6&q=${navigation.parsed.lastPos[0]},${navigation.parsed.lastPos[1]}`
+		const strFirst = `${navigation.parsed.firstPos[0].toFixed(6)}, ${navigation.parsed.firstPos[1].toFixed(6)}`;
+		const strLast = `${navigation.parsed.lastPos[0].toFixed(6)}, ${navigation.parsed.lastPos[1].toFixed(6)}`;
+		DOMSetHtml('txtMagInfo2', `<a target="locationFirst" href="${linkFirst}">[${strFirst}]</a> ~ <a target="locationLast" href="${linkLast}">[${strLast}]</a>`);
+
+		DOMSetHtml('txtMagInfo3', `ADCP - ${vMag}mm/s, ${vDir}&deg;`);
+
+		DOMSetHtml('txtMagInfo4', `Ship - AVG SPD ${navigation.avgSpd}mm/s, HDT : ${navigation.parsed.hdt.toFixed(2)}&deg;`);
+	}
+
+	window.onClickMag = (e) => {
+		window.toggleMag = !window.toggleMag;
+
+		if(true !== window.toggleMag) {
+			window.onMouseMag(e);
+		}
+	}
+
+	window.findMapMagnitude = (x, y) => {
+		const keysX = Object.keys(window.mapMagnitude).reverse();
+		const xidx = keysX.findIndex(key => 0 >= ~~key - x);
+		const keysY = Object.keys(window.mapMagnitude[keysX[xidx]]).reverse();
+		const yidx = keysY.findIndex(key => 0 >= ~~key - y);
+		
+		return window.mapMagnitude[keysX[xidx]][keysY[yidx]];
 	}
 
 </script>
