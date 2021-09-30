@@ -1,17 +1,17 @@
 function DNDLocalFile(area, fn) {
 	// -- Prevent, Stop
 	['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-		area.addEventListener(eventName, (e) => {e.preventDefault();e.stopPropagation();}, false)
+		area.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }, false)
 	});
 
 	// -- Highlight
 	['dragenter', 'dragover'].forEach(eventName => {
-		area.addEventListener(eventName, () => {area.classList.add('highlight')}, false)
+		area.addEventListener(eventName, () => { area.classList.add('highlight') }, false)
 	});
 
 	// -- Unhighlight
 	['dragleave', 'drop'].forEach(eventName => {
-		area.addEventListener(eventName, () => {area.classList.remove('highlight')}, false)
+		area.addEventListener(eventName, () => { area.classList.remove('highlight') }, false)
 	});
 
 	// -- Drop
@@ -50,7 +50,7 @@ function DOMGetChecked(name) {
 	const checked = [];
 	for (let i = 0; i < elements.length; i++) {
 		const e = elements[i];
-		if(e.checked) {
+		if (e.checked) {
 			checked.push(e);
 		}
 	}
@@ -68,19 +68,19 @@ function getValueFromObject(obj, exp) {
 	const m = matchAttributeExpression(exp);
 	const list = [];
 	m.forEach(item => {
-		if(0 === item.length) {
+		if (0 === item.length) {
 			return;
 		}
 
 		// -- [4] -> int 4
-		if(item.match(/(\d+)\]$/)) {
+		if (item.match(/(\d+)\]$/)) {
 			list.push(parseInt(item))
 		} else {
 			list.push(item);
 		}
 	});
 
-	if(0 === list.length) {
+	if (0 === list.length) {
 		console.log(`getValueFromObject Invalid expression ${obj}, '${exp}'`);
 		return undefined;
 	}
@@ -104,7 +104,7 @@ async function readFileString(file) {
 		reader.onload = (e) => {
 			resolve(reader.result);
 		}
-	
+
 		reader.onerror = (e) => {
 			reject(e);
 		}
@@ -130,6 +130,20 @@ function scaleLinear(domain, range) {
 		return range[0] + diffRange * ((v - domain[0]) / diffDomain);
 	}
 };
+
+// https://stackoverflow.com/questions/3665115/how-to-create-a-file-in-memory-for-user-to-download-but-not-through-server
+function download(filename, text) {
+	var element = document.createElement('a');
+	element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+	element.setAttribute('download', filename);
+
+	element.style.display = 'none';
+	document.body.appendChild(element);
+
+	element.click();
+
+	document.body.removeChild(element);
+}
 
 // -- Just holds scale functions
 // -- I need to know the domain and range sometimes

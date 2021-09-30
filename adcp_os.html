@@ -37,6 +37,7 @@
 
 		<h1>ADCP - Ocean surveyor - PD0 Format - LTA, STA, ENR, ENS, ENX</h1>
 		<span><button class="btnDraw" onclick="parsePD0()">Parse</button></span>
+		<span><button class="btnDraw" onclick="exportDialog()">Export</button></span>
 
 		<div id="drop-area" class="drop-area">
 			<form>
@@ -46,6 +47,55 @@
 				<label class="button" for="fileElem">Select some files</label>
 			</form>
 		</div>
+	</div>
+
+	<div id="areaExport" style="display:none;">
+		<form id="formExport">
+			<input id="exportBinCount" type="number" placeholder="Number of Bins to export, ex) 1 ~ 5" value="5" name="binCount">
+			<label for="exportBinCount">Number of bins</label>
+			<br>
+
+			<input id="exportDelimiterTab" type="radio" name="exportDelimiter" value="tab" checked="checked">
+			<label for="exportDelimiterTab">Tab</label>
+			<input id="exportDelimiterComma" type="radio" name="exportDelimiter" value="comma">
+			<label for="exportDelimiterComma">Comma</label>
+			<br>
+
+			<input id="exportVelocityCells" type="checkbox" value="velocityCells" name="exportFlags">
+			<label for="exportVelocityCells">Velocity Cells</label>
+			<br>
+			<input id="exportVelocityMD" type="checkbox" value="velocityMD" name="exportFlags" checked="checked">
+			<label for="exportVelocityMD">Velocity Magnitude / Direction</label>
+			<br>
+			<input id="exportVelocityMDNav" type="checkbox" value="velocityMDNav" name="exportFlags" checked="checked">
+			<label for="exportVelocityMDNav">Velocity Magnitude / Direction post processed with Navigation</label>
+			<br>
+			<input id="exportNavigationAvgTrackMag" type="checkbox" value="navigationAvgTrackMag" name="exportFlags">
+			<label for="exportNavigationAvgTrackMag">Navigation Average Track Magnitude</label>
+			<br>
+			<input id="exportNavigationAvgTrackTrue" type="checkbox" value="navigationAvgTrackTrue" name="exportFlags">
+			<label for="exportNavigationAvgTrackTrue">Navigation Average Track True</label>
+			<br>
+			<input id="exportNavigationHdt" type="checkbox" value="navigationHdt" name="exportFlags">
+			<label for="exportNavigationHdt">Navigation Heading</label>
+			<br>
+			<input id="exportNavigationPosition" type="checkbox" value="navigationPosition" name="exportFlags">
+			<label for="exportNavigationPosition">Navigation Position</label>
+			<br>
+			<input id="exportNavigationAvgSpd" type="checkbox" value="navigationAvgSpd" name="exportFlags" checked="checked">
+			<label for="exportNavigationAvgSpd">Navigation Average Speed</label>
+			<br>
+			<input id="exportNavigationNoEns" type="checkbox" value="navigationNoEns" name="exportFlags">
+			<label for="exportNavigationNoEns">Navigation Ensemble Number</label>
+			<br>
+			<input id="exportBottomTrackVelocity" type="checkbox" value="bottomTrackVelocity" name="exportFlags">
+			<label for="exportBottomTrackVelocity">Bottom track velocity</label>
+			<br>
+			<input id="exportBottomTrackRSSI" type="checkbox" value="bottomTrackRSSI" name="exportFlags">
+			<label for="exportBottomTrackRSSI">Bottom track Receiver signal strength indicator</label>
+		</form>
+
+		<button onclick="onClickExportNow()">Export</button>
 	</div>
 
 	<div id="areaResult" style="display: none">
@@ -507,6 +557,229 @@
 		const yidx = keysY.findIndex(key => 0 >= ~~key - y);
 		
 		return window.mapMagnitude[keysX[xidx]][keysY[yidx]];
+	}
+
+	window.exportDialog = () => {
+		document.getElementById('areaExport').style.display = 'block';
+	}
+
+	window.onClickExportNow = () => {
+		// -- Flag
+		const exportFlag = {};
+		DOMGetChecked('exportFlags').forEach(item => exportFlag[item.value] = true);
+
+		exportFlag.binCount = parseInt(document.getElementById('exportBinCount').value);
+		exportFlag.delimiter = DOMGetChecked('exportDelimiter')[0].value;
+
+		if(isNaN(exportFlag.binCount) || exportFlag.binCount < 1 || 100 < exportFlag.binCount) {
+			alert('Invalid Bin Count, should be 1 ~ 100');
+			return;
+		}
+
+		if('tab' === exportFlag.delimiter) {
+			exportFlag.delimiter = '\t';
+		} else if('comma' === exportFlag.delimiter) {
+			exportFlag.delimiter = ',';
+		}
+
+		document.getElementById('areaExport').style.display = 'none';
+
+		// -- data
+
+		const src = window.fileRead;
+		const brief = src.getBrief();
+
+		// const exportFlag = {
+		// 	binCount: 5,
+		// 	delimiter: '\t',
+		// 	velocityCells: true,
+		// 	velocityMD: true,
+		// 	velocityMDNav: true,
+		// 	navigationAvgTrackMag: true,
+		// 	navigationAvgTrackTrue: true,
+		// 	navigationHdt: true,
+		// 	navigationPosition: true, // first, last position
+		// 	navigationAvgSpd: true,
+		// 	navigationNoEns: true, // ensemble number
+		// 	bottomTrackVelocity: true,
+		// 	bottomTrackRSSI: true,
+		// };
+		const fnBinCount = (fn) => {
+			for(let i = 1; i <= exportFlag.binCount; i++) {
+				fn(i);
+			}
+		};
+
+		const headerDescription = [];
+		const headers = [];
+		const lines = [];
+
+		if(exportFlag.velocityCells) {
+			headerDescription.push('// VC : Velocity Cells for each bins [Bin-No], unit : mm/s, -32768 or 32768 is invalid value');
+			fnBinCount((bin) => {
+				headers.push(`VC[${bin}-1]`);
+				headers.push(`VC[${bin}-2]`);
+				headers.push(`VC[${bin}-3]`);
+				headers.push(`VC[${bin}-4]`);
+			});
+		}
+
+		if(exportFlag.velocityMD) {
+			headerDescription.push('// VM : Velocity Magnitude, unit : mm/s');
+			headerDescription.push('// VD : Velocity Direction, unit : degree');
+			fnBinCount((bin) => {
+				headers.push(`VM[${bin}]`);
+				headers.push(`VD[${bin}]`);
+			});
+		}
+
+		if(exportFlag.velocityMDNav) {
+			headerDescription.push('// VMN : Velocity Magnitude calculated with Navigation, unit : mm/s');
+			headerDescription.push('// VDN : Velocity Direction calculated with Navigation, unit : degree');
+			fnBinCount((bin) => {
+				headers.push(`VMN[${bin}]`);
+				headers.push(`VDN[${bin}]`);
+			});
+		}
+
+		if(exportFlag.navigationAvgTrackMag) {
+			headerDescription.push('// NAVGM : Average Magnetic Navigational Ship Track Direction, unit : degree');
+			headers.push('NAVGM');
+		}
+
+		if(exportFlag.navigationAvgTrackTrue) {
+			headerDescription.push('// NAVGT : Average True Navigational Ship Track Direction, unit : degree');
+			headers.push('NAVGT');
+		}
+
+		if(exportFlag.navigationHdt) {
+			headerDescription.push('// NHDT : Navigation Heading, unit : degree');
+			headers.push('NHDT');
+		}
+
+		if(exportFlag.navigationPosition) {
+			headerDescription.push('// NFPLat : Navigation First Position Latitude, unit : degree');
+			headerDescription.push('// NFPLng : Navigation First Position Longitude, unit : degree');
+			headerDescription.push('// NLPLat : Navigation Last Position Latitude, unit : degree');
+			headerDescription.push('// NLPLng : Navigation Last Position Longitude, unit : degree');
+			headers.push('NFPLat');
+			headers.push('NFPLng');
+			headers.push('NLPLng');
+			headers.push('NLPLng');
+		}
+
+		if(exportFlag.navigationAvgSpd) {
+			headerDescription.push('// NAVGSPD : Navigation average speed, unit : mm/s signed');
+			headers.push('NAVGSPD');
+		}
+
+		if(exportFlag.navigationNoEns) {
+			headerDescription.push('// NENSNO : Navigation Ensemble number, sequential number of ensemble 1 ~ 4,294,967');
+			headers.push('NENSNO');
+		}
+
+		if(exportFlag.bottomTrackVelocity) {
+			headerDescription.push('// BTTV : Bottom track velocity 1 ~ 4, depends on EX Command, if its Earth coordinates : East, North, Upward, Error');
+			headers.push(`BTTV1`);
+			headers.push(`BTTV2`);
+			headers.push(`BTTV3`);
+			headers.push(`BTTV4`);
+		}
+
+		if(exportFlag.bottomTrackRSSI) {
+			headerDescription.push('// BTRSSI : Bottom track Receiver signal strength indicator 1 ~ 4, unit : dB');
+			headers.push(`BTRSSI1`);
+			headers.push(`BTRSSI2`);
+			headers.push(`BTRSSI3`);
+			headers.push(`BTRSSI4`);
+		}
+
+		brief.forEach((ping) => {
+			const velocity = ping.getByHID(TDPD0.HID.VELOCITY);
+			const nav = ping.getByHID(TDPD0.HID.NAV);
+			const bt = ping.getByHID(TDPD0.HID.BT);
+
+			const line = [];
+
+			if(velocity) {
+				const pd = velocity.parsedDetail;
+
+				// -- Velocity cells
+				if(exportFlag.velocityCells) {
+					fnBinCount(bin => line.push(...pd.cells[bin - 1]));
+				}
+
+				if(exportFlag.velocityMD) {
+					fnBinCount(bin => line.push(...pd.md[bin - 1]));
+				}
+
+				if(exportFlag.velocityMDNav) {
+					fnBinCount(bin => line.push(...pd.mdNav[bin - 1]));
+				}
+			}
+
+			if(nav) {
+				const src = nav.parsedDetail.parsed;
+				
+				if(exportFlag.navigationAvgTrackMag) {
+					line.push(src.avgTrackMag);
+				}
+
+				if(exportFlag.navigationAvgTrackTrue) {
+					line.push(src.avgTrackTrue);
+				}
+
+				if(exportFlag.navigationHdt) {
+					line.push(src.hdt);
+				}
+
+				if(exportFlag.navigationPosition) {
+					line.push(...src.firstPos);
+					line.push(...src.lastPos);
+				}
+
+				if(exportFlag.navigationAvgSpd) {
+					line.push(nav.parsedDetail.avgSpd);
+				}
+
+				if(exportFlag.navigationNoEns) {
+					line.push(nav.parsedDetail.noEns);
+				}
+			}
+
+			if(bt) {
+				const src = bt.parsedDetail;
+				
+				if(exportFlag.bottomTrackVelocity) {
+					line.push(...src.vel);
+				}
+
+				if(exportFlag.bottomTrackRSSI) {
+					line.push(...src.rssiAmpDb);
+				}
+			}
+
+			lines.push(line);
+		});
+
+		const strLines = [];
+
+		strLines.push(headerDescription.join('\n'));
+		strLines.push(headers.join(exportFlag.delimiter));
+		lines.forEach(line => strLines.push(line.join(exportFlag.delimiter)));
+		const str = strLines.join('\n');
+
+		const fileName = ['MP_ADCP'];
+		const fixed = brief[0].getByHID(TDPD0.HID.FIXED);
+		const variable = brief[0].getByHID(TDPD0.HID.VARIABLE);
+
+		if(fixed.parsedDetail.sysCfgParsed.systemStr) {
+			fileName.push(fixed.parsedDetail.sysCfgParsed.systemStr);
+		}
+
+		fileName.push(variable.parsedDetail.tsStr.toISOString().substr(0, 19));
+
+		download(fileName.join('_') + ".txt", str);
 	}
 
 </script>

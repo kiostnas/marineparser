@@ -811,7 +811,7 @@ class PD0BottomTrack extends PD0 {
 		const vel = this.parseArray('U2', 4);
 		const corr = this.parseArray('U1', 4);
 		const evalAmp = this.parseArray('U1', 4);
-		const pg = this.parseArray('U1', 4);
+		const pg = this.parseArray('U1', 4); // -- pg is not in ocean surveyor manual
 		const refLayer = this.parseArray('U1', 4);
 		const refLayerVel = this.parseArray('U2', 4);
 		const refCorr = this.parseArray('U1', 4);
