@@ -1,6 +1,6 @@
 import EndianDataView from './EndianDataView.js';
 
-export { TDPD0, PD0, PD0Header, PD0Fixed, PD0Variable, PD0Navigation };
+export { TDPD0, PD0, PD0Header, PD0Fixed, PD0Variable, PD0Navigation, PD0Velocity };
 
 // -- Only one PD0
 // -- parsedBrief - header
@@ -570,6 +570,13 @@ class PD0Velocity extends PD0 {
 
 	// https://www.starpath.com/freeware/truewind.pdf
 	// -- TODO Verify it
+	/**
+	 * @param {*} ws apparent wind speed
+	 * @param {*} wd apparent wind direction
+	 * @param {*} bs boat speed
+	 * @param {*} bh boat heading
+	 * @returns [true wind speed, true wind direction]
+	 */
 	static TrueWind(ws, wd, bs, bh) {
 		const tws1 = (bs * bs) + (ws * ws) - (2 * bs * ws * Math.cos(wd * Math.PI / 180));
 		const tws = Math.sqrt(tws1);

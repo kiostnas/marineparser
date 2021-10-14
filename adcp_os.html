@@ -61,38 +61,44 @@
 			<label for="exportDelimiterComma">Comma</label>
 			<br>
 
+			<input id="exportVariableDate" type="checkbox" value="variableNoEns" name="exportFlags" checked="checked">
+			<label for="exportVariableNoEns">Variable - Ensemble number</label>
+			<br>
+			<input id="exportVariableTSRTC" type="checkbox" value="variableTSRTC" name="exportFlags" checked="checked">
+			<label for="exportVariableTSRTC">Variable - Real time clock set by TS command</label>
+			<br>
 			<input id="exportVelocityCells" type="checkbox" value="velocityCells" name="exportFlags">
-			<label for="exportVelocityCells">Velocity Cells</label>
+			<label for="exportVelocityCells">Velocity - Cells</label>
 			<br>
 			<input id="exportVelocityMD" type="checkbox" value="velocityMD" name="exportFlags" checked="checked">
-			<label for="exportVelocityMD">Velocity Magnitude / Direction</label>
+			<label for="exportVelocityMD">Velocity - Magnitude / Direction</label>
 			<br>
 			<input id="exportVelocityMDNav" type="checkbox" value="velocityMDNav" name="exportFlags" checked="checked">
-			<label for="exportVelocityMDNav">Velocity Magnitude / Direction post processed with Navigation</label>
+			<label for="exportVelocityMDNav">Velocity - Magnitude / Direction post processed with Navigation</label>
 			<br>
 			<input id="exportNavigationAvgTrackMag" type="checkbox" value="navigationAvgTrackMag" name="exportFlags">
-			<label for="exportNavigationAvgTrackMag">Navigation Average Track Magnitude</label>
+			<label for="exportNavigationAvgTrackMag">Navigation - Average Track Magnitude</label>
 			<br>
-			<input id="exportNavigationAvgTrackTrue" type="checkbox" value="navigationAvgTrackTrue" name="exportFlags">
-			<label for="exportNavigationAvgTrackTrue">Navigation Average Track True</label>
+			<input id="exportNavigationAvgTrackTrue" type="checkbox" value="navigationAvgTrackTrue" name="exportFlags" checked="checked">
+			<label for="exportNavigationAvgTrackTrue">Navigation - Average Track True</label>
 			<br>
 			<input id="exportNavigationHdt" type="checkbox" value="navigationHdt" name="exportFlags">
-			<label for="exportNavigationHdt">Navigation Heading</label>
+			<label for="exportNavigationHdt">Navigation - Heading</label>
 			<br>
 			<input id="exportNavigationPosition" type="checkbox" value="navigationPosition" name="exportFlags">
-			<label for="exportNavigationPosition">Navigation Position</label>
+			<label for="exportNavigationPosition">Navigation - Position</label>
 			<br>
 			<input id="exportNavigationAvgSpd" type="checkbox" value="navigationAvgSpd" name="exportFlags" checked="checked">
-			<label for="exportNavigationAvgSpd">Navigation Average Speed</label>
+			<label for="exportNavigationAvgSpd">Navigation - Average Speed</label>
 			<br>
 			<input id="exportNavigationNoEns" type="checkbox" value="navigationNoEns" name="exportFlags">
-			<label for="exportNavigationNoEns">Navigation Ensemble Number</label>
+			<label for="exportNavigationNoEns">Navigation - Ensemble Number</label>
 			<br>
 			<input id="exportBottomTrackVelocity" type="checkbox" value="bottomTrackVelocity" name="exportFlags">
-			<label for="exportBottomTrackVelocity">Bottom track velocity</label>
+			<label for="exportBottomTrackVelocity">Bottom track - velocity</label>
 			<br>
 			<input id="exportBottomTrackRSSI" type="checkbox" value="bottomTrackRSSI" name="exportFlags">
-			<label for="exportBottomTrackRSSI">Bottom track Receiver signal strength indicator</label>
+			<label for="exportBottomTrackRSSI">Bottom track - Receiver signal strength indicator</label>
 		</form>
 
 		<button onclick="onClickExportNow()">Export</button>
@@ -560,7 +566,12 @@
 	}
 
 	window.exportDialog = () => {
-		document.getElementById('areaExport').style.display = 'block';
+		const target = document.getElementById('areaExport');
+		if('block' !== target.style.display) {
+			target.style.display = 'block';
+		} else {
+			target.style.display = 'none';
+		}
 	}
 
 	window.onClickExportNow = () => {
@@ -589,21 +600,6 @@
 		const src = window.fileRead;
 		const brief = src.getBrief();
 
-		// const exportFlag = {
-		// 	binCount: 5,
-		// 	delimiter: '\t',
-		// 	velocityCells: true,
-		// 	velocityMD: true,
-		// 	velocityMDNav: true,
-		// 	navigationAvgTrackMag: true,
-		// 	navigationAvgTrackTrue: true,
-		// 	navigationHdt: true,
-		// 	navigationPosition: true, // first, last position
-		// 	navigationAvgSpd: true,
-		// 	navigationNoEns: true, // ensemble number
-		// 	bottomTrackVelocity: true,
-		// 	bottomTrackRSSI: true,
-		// };
 		const fnBinCount = (fn) => {
 			for(let i = 1; i <= exportFlag.binCount; i++) {
 				fn(i);
@@ -613,6 +609,16 @@
 		const headerDescription = [];
 		const headers = [];
 		const lines = [];
+
+		if(exportFlag.variableNoEns) {
+			headerDescription.push(`// VENSNO : Variable leader ensemble number, sequential number, can be different from navigation's ensemble number`);
+			headers.push('VENSNO');
+		}
+
+		if(exportFlag.variableTSRTC) {
+			headerDescription.push(`// VTSRTC : Variable leader Real time clock set by TS command`);
+			headers.push('VTSRTC');
+		}
 
 		if(exportFlag.velocityCells) {
 			headerDescription.push('// VC : Velocity Cells for each bins [Bin-No], unit : mm/s, -32768 or 32768 is invalid value');
@@ -695,11 +701,22 @@
 		}
 
 		brief.forEach((ping) => {
+			const variableLeader = ping.getByHID(TDPD0.HID.VARIABLE);
 			const velocity = ping.getByHID(TDPD0.HID.VELOCITY);
 			const nav = ping.getByHID(TDPD0.HID.NAV);
 			const bt = ping.getByHID(TDPD0.HID.BT);
 
 			const line = [];
+
+			if(variableLeader) {
+				if(exportFlag.variableNoEns) {
+					line.push(variableLeader.parsedDetail.noEns);
+				}
+
+				if(exportFlag.variableTSRTC) {
+					line.push(variableLeader.parsedDetail.tsStr.toISOString());
+				}
+			}
 
 			if(velocity) {
 				const pd = velocity.parsedDetail;
