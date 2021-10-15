@@ -670,7 +670,7 @@
 			headerDescription.push('// NLPLng : Navigation Last Position Longitude, unit : degree');
 			headers.push('NFPLat');
 			headers.push('NFPLng');
-			headers.push('NLPLng');
+			headers.push('NLPLat');
 			headers.push('NLPLng');
 		}
 
@@ -799,5 +799,31 @@
 		download(fileName.join('_') + ".txt", str);
 	}
 
+</script>
+
+<script type="module">
+	import {TDPD0} from './jsm/TDPD0.js';
+
+	function testNavigationEnsemble() {
+		const result = window.fileRead.getBrief();
+
+		let maxCount = 1000;
+		if(result.length < maxCount) {
+			maxCount = result.length;
+		}
+
+		for(let i = 0; i < maxCount; i++) {
+			const item = result[i];
+			const sectionVariable = item.getByHID(TDPD0.HID.VARIABLE);
+			const sectionNavigation = item.getByHID(TDPD0.HID.NAV);
+
+			const noEnsVariable = sectionVariable.parsedDetail.noEns;
+			const noEnsNavigation = sectionNavigation.parsedDetail.noEns;
+
+			console.log(`[${i}] V : ${noEnsVariable} - ${noEnsNavigation}`);
+		}
+	}
+
+	window.testNavigationEnsemble = testNavigationEnsemble;
 </script>
 </html>

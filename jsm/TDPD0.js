@@ -560,6 +560,12 @@ class PD0Velocity extends PD0 {
 	}
 
 	// -- magnitude : mm/s, direction : 0 ~ 359 degree
+	/**
+	 * Calculate 
+	 * @param {*} e 
+	 * @param {*} n 
+	 * @returns 
+	 */
 	static XYMagDir(e, n) {
 		const magnitude = Math.sqrt((e * e) + (n * n));
 		const d = Math.atan2(n, e) * (180 / Math.PI); // -180 ~ 180, rotate the coordination
@@ -908,8 +914,9 @@ class PD0Navigation extends PD0 {
 		['numPRAvg', 'U2'], // Number of Pitch / Roll avg
 	]);
 
-	static DEG = 0.0055;
-	static POS = 8E-8;
+	static BAM(value, bit) {
+		return value * 180 / Math.pow(2, bit - 1);
+	}
 
 	static parseNavFlags(word) {
 		const strInvalid = [], strValid = [];
@@ -975,19 +982,19 @@ class PD0Navigation extends PD0 {
 		parsed.ensDateNote = 'Not verified if its utc or local based time';
 
 		// -- Position
-		parsed.lastPos = [r.lastLat * PD0Navigation.POS, r.lastLng * PD0Navigation.POS];
-		parsed.firstPos = [r.firstLat * PD0Navigation.POS, r.firstLng * PD0Navigation.POS];
-		parsed.avgTrackTrue = r.avgTrackTrue * PD0Navigation.DEG;
-		parsed.avgTrackMag = r.avgTrackMag * PD0Navigation.DEG;
-		parsed.DMG = r.DMG * PD0Navigation.DEG;
+		parsed.lastPos = [PD0Navigation.BAM(r.lastLat, 32), PD0Navigation.BAM(r.lastLng, 32)];
+		parsed.firstPos = [PD0Navigation.BAM(r.firstLat, 32), PD0Navigation.BAM(r.firstLng, 32)];
+		parsed.avgTrackTrue = PD0Navigation.BAM(r.avgTrackTrue, 16);
+		parsed.avgTrackMag = PD0Navigation.BAM(r.avgTrackMag, 16);
+		parsed.DMG = PD0Navigation.BAM(r.DMG, 16);
 
 		const flags = PD0Navigation.parseNavFlags(r.flags);
 		parsed.flagsInvalid = flags.invalid;
 		parsed.flagsValid = flags.valid;
 
-		parsed.hdt = r.hdt * PD0Navigation.DEG;
-		parsed.pitch = r.pitch * PD0Navigation.DEG;
-		parsed.roll = r.roll * PD0Navigation.DEG;
+		parsed.hdt = PD0Navigation.BAM(r.hdt, 16);
+		parsed.pitch = PD0Navigation.BAM(r.pitch, 16);
+		parsed.roll = PD0Navigation.BAM(r.roll, 16);
 		
 		r.parsed = parsed;
 
