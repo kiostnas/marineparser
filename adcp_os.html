@@ -76,10 +76,16 @@
 			<input id="exportVelocityMDNav" type="checkbox" value="velocityMDNav" name="exportFlags" checked="checked">
 			<label for="exportVelocityMDNav">Velocity - Magnitude / Direction post processed with Navigation</label>
 			<br>
+			<input id="exportNavigationDMG" type="checkbox" value="navigationDMG" name="exportFlags" checked="checked">
+			<label for="exportNavigationDMG">Navigation - Direction made good</label>
+			<br>
+			<input id="exportNavigationSMG" type="checkbox" value="navigationSMG" name="exportFlags" checked="checked">
+			<label for="exportNavigationSMG">Navigation - Speed made good</label>
+			<br>
 			<input id="exportNavigationAvgTrackMag" type="checkbox" value="navigationAvgTrackMag" name="exportFlags">
 			<label for="exportNavigationAvgTrackMag">Navigation - Average Track Magnitude</label>
 			<br>
-			<input id="exportNavigationAvgTrackTrue" type="checkbox" value="navigationAvgTrackTrue" name="exportFlags" checked="checked">
+			<input id="exportNavigationAvgTrackTrue" type="checkbox" value="navigationAvgTrackTrue" name="exportFlags">
 			<label for="exportNavigationAvgTrackTrue">Navigation - Average Track True</label>
 			<br>
 			<input id="exportNavigationHdt" type="checkbox" value="navigationHdt" name="exportFlags">
@@ -88,7 +94,7 @@
 			<input id="exportNavigationPosition" type="checkbox" value="navigationPosition" name="exportFlags">
 			<label for="exportNavigationPosition">Navigation - Position</label>
 			<br>
-			<input id="exportNavigationAvgSpd" type="checkbox" value="navigationAvgSpd" name="exportFlags" checked="checked">
+			<input id="exportNavigationAvgSpd" type="checkbox" value="navigationAvgSpd" name="exportFlags">
 			<label for="exportNavigationAvgSpd">Navigation - Average Speed</label>
 			<br>
 			<input id="exportNavigationNoEns" type="checkbox" value="navigationNoEns" name="exportFlags">
@@ -648,6 +654,15 @@
 			});
 		}
 
+		if(exportFlag.navigationDMG) {
+			headerDescription.push('// NDMG : Direction calculated between navigation positions, unit : degree');
+			headers.push('NDMG');
+		}
+
+		if(exportFlag.navigationSMG) {
+			headerDescription.push('// NSMG : Speed calculated between navigation positions., unit : mm/sec signed');
+			headers.push('NSMG');
+		}
 		if(exportFlag.navigationAvgTrackMag) {
 			headerDescription.push('// NAVGM : Average Magnetic Navigational Ship Track Direction, unit : degree');
 			headers.push('NAVGM');
@@ -738,6 +753,14 @@
 			if(nav) {
 				const src = nav.parsedDetail.parsed;
 				
+				if(exportFlag.navigationDMG) {
+					line.push(src.DMG);
+				}
+
+				if(exportFlag.navigationSMG) {
+					line.push(nav.parsedDetail.SMG);
+				}
+
 				if(exportFlag.navigationAvgTrackMag) {
 					line.push(src.avgTrackMag);
 				}

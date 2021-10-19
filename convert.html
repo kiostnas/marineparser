@@ -11,6 +11,10 @@
         #areaTrueWind input {
             text-align: right;
         }
+
+        #areaTrueCurrents input {
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -37,23 +41,47 @@
             <input id="twAWS" type="number" value="10">
             <br>
             <label for="twAWD">Apparent wind direction</label>
-            <input id="twAWD" type="number" value="90">
+            <input id="twAWD" type="number" value="90" onblur="this.value = DegreeToRange(this.value)">
             <span>relative to the boat heading, not a absolute degree</span>
             <br>
             <label for="twBS">Boat Speed</label>
             <input id="twBS" type="number" value="20">
             <br>
             <label for="twBH">Boat Heading</label>
-            <input id="twBH" type="number" value="45">
+            <input id="twBH" type="number" value="45" onblur="this.value = DegreeToRange(this.value)">
         </form>
         <button onclick="onClickConvertTrueWind()">Convert</button>
         <p id="areaResultTrueWind"></p>
+    </div>
+
+    <!-- Currents -->
+    <div>
+        <h3>True currents calculation</h3>
+        <form id="areaTrueCurrents">
+            <label for="tcCS">Currents speed</label>
+            <input id="tcCS" type="number" value="4316.313">
+            <br>
+            <label for="tcCD">Currents direction</label>
+            <input id="tcCD" type="number" value="224.5495" onblur="this.value = DegreeToRange(this.value)">
+            <span>Absolute to the north, 0 ~ 359</span>
+            <br>
+            <label for="tcBS">Boat Speed</label>
+            <input id="tcBS" type="number" value="5804">
+            <br>
+            <label for="tcBH">Boat Heading</label>
+            <input id="tcBH" type="number" value="42.56104" onblur="this.value = DegreeToRange(this.value)">
+        </form>
+        <button onclick="onClickConvertTrueCurrents()">Convert</button>
+        <p id="areaResultTrueCurrents"></p>
+
     </div>
 </body>
 
 <script type="text/javascript" src="./js/Misc.js"></script>
 <script type="module">
 	import {PD0Velocity} from './jsm/TDPD0.js';
+
+    window.DegreeToRange = PD0Velocity.DegreeToRange;
 
     window.onClickConvertXYMagDir = () => {
         const east = parseFloat(document.getElementById('xyEast').value);
@@ -96,6 +124,31 @@
 
         const result = PD0Velocity.TrueWind(ws, wd, bs, bh);
         setResult(`True wind speed : ${result[0]}<br>True wind direction : ${result[1]}&deg;`);
+    }
+
+    window.onClickConvertTrueCurrents = () => {
+        const cs = parseFloat(document.getElementById('tcCS').value);
+        const cd = parseFloat(document.getElementById('tcCD').value);
+        const bs = parseFloat(document.getElementById('tcBS').value);
+        const bh = parseFloat(document.getElementById('tcBH').value);
+
+        const setResult = (html) => document.getElementById('areaResultTrueCurrents').innerHTML = html;
+
+        if(0 > cd || 360 <= cd) {
+            setResult(`Invalid Currents direction, should be 0 <= cd < 360`);
+            return;
+        }
+
+        if(0 > bh || 360 <= bh) {
+            setResult(`Invalid Boat heading, should be 0 <= bh < 360`);
+            return;
+        }
+
+        // -- Relative currents direction
+        const rcd = (cd + 180 - bh) % 360;
+
+        const result = PD0Velocity.TrueWind(cs, rcd, bs, bh);
+        setResult(`True currents speed : ${result[0]}<br>True currents direction : ${(result[1] + 180) % 360}&deg;`);
     }
 
 

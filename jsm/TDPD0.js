@@ -58,7 +58,7 @@ class PD0 extends EndianDataView {
 		const navigationInstance = this.getByHID(TDPD0.HID.NAV);
 
 		const r = velocityInstance.parseVelocity2D(fixedInstance.parsedDetail.coordParsed.type);
-		velocityInstance.parseMDNav(navigationInstance.parsedDetail.avgSpd, navigationInstance.parsedDetail.parsed.hdt);
+		velocityInstance.parseMDNav(navigationInstance.parsedDetail.SMG, navigationInstance.parsedDetail.parsed.DMG);
 		// -- r maybe false
 	}
 
@@ -594,6 +594,26 @@ class PD0Velocity extends PD0 {
 		return [tws, twd];
 	}
 
+	/**
+	 * Any degree value to 0 ~ 359, -5 -> 355
+	 * @param {number} value 
+	 * @returns degree
+	 */
+	static DegreeToRange(value) {
+        value = Number(value);
+        if(isNaN(value)) {
+            return 0;
+        }
+        
+        while(value < 0) {
+            value = 360 + value;
+        }
+
+		value = value % 360;
+
+        return value;
+    }
+
 	parseDetail() {
 		const hID = this.getUint16(0);
 		this.addParseOffset(2);
@@ -653,16 +673,25 @@ class PD0Velocity extends PD0 {
 
 		const mdNav = [];
 		this.parsedDetail.md.forEach((item) => {
-			if(TDPD0.INVALID_VALUE !== item[0]
-				&& TDPD0.INVALID_VALUE !== item[1]
-				) {
-					const md = PD0Velocity.TrueWind(item[0], item[1] - shipHdt + 180, shipSpd, shipHdt);
-					md[1] = md[1] % 360;
-					mdNav.push(md);
-				} else {
-					mdNav.push([TDPD0.INVALID_VALUE, TDPD0.INVALID_VALUE]);
-				}
+			// -- Invalid value
+			if(TDPD0.INVALID_VALUE === item[0] || TDPD0.INVALID_VALUE === item[1]) {
+				mdNav.push([TDPD0.INVALID_VALUE, TDPD0.INVALID_VALUE]);
+				return;
+			}
+
+			// -- Zero Speed -> just same as MD
+			if(0 === shipSpd) {
+				mdNav.push(item);
+				return;
+			}
+
+			// -- Calculate
+			const apparentDirection = PD0Velocity.DegreeToRange(item[1] + 180 - shipHdt);
+			const md = PD0Velocity.TrueWind(item[0], apparentDirection, shipSpd, shipHdt);
+			md[1] = (md[1] + 180) % 360;
+			mdNav.push(md);
 		});
+
 		this.parsedDetail.mdNav = mdNav;
 	}
 
