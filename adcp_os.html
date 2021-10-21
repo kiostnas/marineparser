@@ -123,8 +123,12 @@
 				</span>
 			</span>
 			<br>
-			<canvas id="canvasScaleMagnitude" width="200" height="10"></canvas>
-			<br>
+			<canvas id="canvasScaleMagnitude" width="200" height="10" style="border: solid 1px"></canvas>
+		</div>
+
+		<h4>Coordinates - Simple track</h4>
+		<canvas id="canvasCoordinates" width="500" height="500" style="border: solid 1px" onmousewheel="cmWheel(event)" onmousemove="cmMove(event)" onmousedown="cmDown(event)" onmouseup="cmUp()"></canvas>
+		<div style="display: inline-block; vertical-align: top;">
 			<p id="txtMagInfo1"></p>
 			<p id="txtMagInfo2"></p>
 			<p id="txtMagInfo3"></p>
@@ -205,6 +209,7 @@
 <script type="module">
 	import DNDFileList from './jsm/DNDFileList.js'
 	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
+	import GeoSpatial from './jsm/GeoSpatial.js';
 	import {TDPD0, PD0Variable, PD0Navigation} from './jsm/TDPD0.js';
 
 	// -- Draw color scale
@@ -317,7 +322,7 @@
 
 		const pd0Velocity = brief[0].getByHID(TDPD0.HID.VELOCITY);
 
-		const scaleX = scaleLinear([0, brief.length - 1], [0, c.w -1]);
+		const scaleX = scaleLinear([0, brief.length - 1], [0, c.w - 1]);
 		const scaleY = scaleLinear([0, pd0Velocity.parsedDetail.md.length - 1], [0, c.h -1]); // -- Data usually 
 		const color = scaleLinear(window.scaleMag, [240, 0]);
 		let x = 0;
@@ -418,9 +423,76 @@
 		c.putImage();
 	};
 
+	// coordCanvas, coordScaleX, coordScaleY
+	/**
+	 * scale number in meters 1000 * 50
+	 * centerPos in degree [lat, lng]
+	 **/
+	window.draw2DCoordinates = (scale, centerPos) => {
+		if(!fileRead) {
+			return;
+		}
+
+		if(!scale) {
+			scale = 1000 * 50;
+		}
+
+		const brief = fileRead.getBrief();
+
+		const c = new Canvas2DPixel('canvasCoordinates');
+		window.coordCanvas = c;
+		c.newImage();
+
+		const firstNav = brief[0].getByHID(TDPD0.HID.NAV);
+		const lastNav = brief[brief.length - 1].getByHID(TDPD0.HID.NAV);
+
+		if(!firstNav) {
+			console.log('Can not draw coordinates, there is no navigation section');
+			return;
+		}
+
+		// -- First goes to center by default
+		if(!centerPos) {
+			centerPos = firstNav.parsedDetail.parsed.firstPos;
+		}
+
+		const lt = GeoSpatial.destVincenty(centerPos[0], centerPos[1], 315, scale);
+		const rb = GeoSpatial.destVincenty(centerPos[0], centerPos[1], 135, scale);
+
+		const scaleX = ScaleBox.ScaleLinear([lt.lng, rb.lng], [0, c.w]);
+		const scaleY = ScaleBox.ScaleLinear([lt.lat, rb.lat], [0, c.h]);
+
+		// -- Global function
+		window.coordScaleX = scaleX;
+		window.coordScaleY = scaleY;
+
+		brief.forEach((pd0, i) => {
+			const nav = pd0.getByHID(TDPD0.HID.NAV);
+			const x = ~~scaleX(nav.parsedDetail.parsed.firstPos[1]);
+			const y = ~~scaleY(nav.parsedDetail.parsed.firstPos[0]);
+
+			// -- Do not draw
+			if(0 > x || c.w < x || 0 > y || c.h < y)  {
+				return;
+			}
+
+			c.draw32triple(x, y, 0xFFFF0000);
+		});
+
+		// -- Red Dot for center pos
+		const centerX = ~~scaleX(centerPos[1]);
+		const centerY = ~~scaleY(centerPos[0]);
+		c.draw32triple(centerX, centerY, 0xFF0000FF);
+
+		c.putImage();
+
+		window.lastScale = scale;
+	}
+
 	window.draw2D = () => {
 		window.draw2DMagnitude();
 		window.draw2DDirection();
+		window.draw2DCoordinates();
 	}
 
 	window.refreshSummary = () => {
@@ -552,6 +624,9 @@
 		DOMSetHtml('txtMagInfo3', `ADCP - ${vMag}mm/s, ${vDir}&deg;`);
 
 		DOMSetHtml('txtMagInfo4', `Ship - AVG SPD ${navigation.avgSpd}mm/s, HDT : ${navigation.parsed.hdt.toFixed(2)}&deg;`);
+
+		// -- Draw on coordniates 2d canvas
+		window.highlightMouseCoord(navigation.parsed.firstPos);
 	}
 
 	window.onClickMag = (e) => {
@@ -824,6 +899,7 @@
 
 </script>
 
+<!-- Testing -->
 <script type="module">
 	import {TDPD0} from './jsm/TDPD0.js';
 
@@ -848,5 +924,81 @@
 	}
 
 	window.testNavigationEnsemble = testNavigationEnsemble;
+</script>
+
+<!-- Draw coordinates -->
+<script type="text/javascript">
+	window.lastScale = 1000 * 50;
+
+	window.zoomIn = (e) => {
+		let step = 5000;
+		if(lastScale < 1000 * 50) {
+			step = 1000;
+		} else if(lastScale > 1000 * 200) {
+			step = 50000;
+		}
+
+		const scale = window.lastScale - step;
+
+		if(scale > 0) {
+			window.draw2DCoordinates(scale, window.highlightingPos);
+		}
+	}
+
+	window.zoomOut = (e) => {
+		let step = 5000;
+		if(lastScale < 1000 * 50) {
+			step = 1000;
+		} else if(lastScale > 1000 * 200) {
+			step = 50000;
+		}
+
+		const scale = window.lastScale + step;
+
+		window.draw2DCoordinates(scale, window.highlightingPos);
+	}
+
+	window.cmWheel = (e) => {
+		if(!window.hasOwnProperty('lastScale')) {
+			return;
+		}
+
+		if(0 > e.deltaY) {
+			zoomIn(e);
+		} else {
+			zoomOut(e);
+		}
+
+		e.preventDefault();
+	}
+
+	// highlightingPos
+	window.highlightMouseCoord = (pos) => {
+		if(!window.hasOwnProperty('coordScaleX') || !window.hasOwnProperty('coordScaleY') || !window.hasOwnProperty('coordCanvas')) {
+			// -- Can not calculate them
+			return;
+		}
+
+		window.draw2DCoordinates(window.lastScale, pos);
+
+		if(!window.coordCanvas || !window.coordScaleX || !window.coordScaleY) {
+			return;
+		}
+
+		const c = window.coordCanvas;
+		const x = window.coordScaleX(pos[1]);
+		const y = window.coordScaleY(pos[0]);
+
+		if(0 > x || c.w <= x || 0 > y || c.h <= y) {
+			return;
+		}
+
+		// -- Red
+		c.draw32triple(x, y, 0xFF0000FF);
+		c.putImage();
+
+		window.highlightingPos = pos;
+	}
+
 </script>
 </html>

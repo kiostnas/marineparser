@@ -45,6 +45,7 @@ export default class Canvas2DPixel {
 	}
 
 	// -- bgrA
+	// TODO Known bug pixel can go over the edge, b/c no limit check
 	draw32triple(x, y, Abgr) {
 		this.buf32[y * this.w + x] = Abgr;
 		this.buf32[(y + 1) * this.w + x] = Abgr;
