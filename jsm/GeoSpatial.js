@@ -1,3 +1,5 @@
+export { GeoSpatial, Degree2Pixel };
+
 export default class GeoSpatial {
 	// https://gist.github.com/mathiasbynens/354587
 	/*!
@@ -61,7 +63,8 @@ export default class GeoSpatial {
 
 	/**
 	 * return in km
-	 * @param {https://stackoverflow.com/questions/13840516/how-to-find-my-distance-to-a-known-location-in-javascript} lon1 
+	 * https://stackoverflow.com/questions/13840516/how-to-find-my-distance-to-a-known-location-in-javascript
+	 * @param {*} lon1 
 	 * @param {*} lat1 
 	 * @param {*} lon2 
 	 * @param {*} lat2 
@@ -76,5 +79,179 @@ export default class GeoSpatial {
 		var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
 		var d = R * c; // Distance in km
 		return d;
-	  }
+	}
 }
+
+class Degree2Pixel {
+	// Always use [lat, lng], [x, y], can be confusing!! be careful!
+	// -- Biggest - 111 km - 0
+	// -- Smallest - 1.94 km - 89, 0 to 0
+
+	constructor() {
+		this.centerPos = [0, 0];
+		this.widthToDegree = 1; // 1 degree is width(500)
+		this.heightToDegree = 1; // 1 degree is height(500)
+		this.mapSize = [500, 500];
+		this.mapPixel = [250, 250];
+		this.zoomLevel = 1;
+
+		// -- 1 degree to km, set by calculateUnit
+		this.xDistance = 111;
+		this.yDistance = 111;
+
+		this.setCenterPos([0, 0]);
+		this.setDistance(1);
+		this.setMapSize([500, 500]);
+	}
+
+	setCenterPos(pos) {
+		if(2 !== pos.length) {
+			console.error(`Invalid pos, should be 2 length array`);
+			return;
+		}
+
+		if(90 < pos[0] || -90 > pos[0]) {
+			console.error(`Latitude should be with in -90 ~ 90`);
+			return;
+		}
+
+		if(180 < pos[1] || -180 > pos[1]) {
+			console.error(`Longitude should be with in -180 ~ 180`);
+			return;
+		}
+
+		// -- 1 degree to km
+		const xdis = GeoSpatial.distance(pos[1], pos[0], pos[1] + 1, pos[0]);
+		const ydis = GeoSpatial.distance(pos[1], pos[0], pos[1], pos[0] + 1);
+
+		this.xDistance = xdis;
+		this.yDistance = ydis;
+
+		this.centerPos = pos;
+
+		this.calculateUnit();
+	}
+
+	setMapSize(sizes) {
+		if(2 !== sizes.length) {
+			console.error(`Map size should be 2 length array, width, height`);
+			return;
+		}
+
+		if(0 >= sizes[0] || 0 >= sizes[1]) {
+			console.error(`Invalid size, should be bigger than zero!`);
+			return;
+		}
+
+		this.mapSize = sizes;
+		this.mapPixel = [sizes[0] / 2, sizes[1] / 2];
+
+		this.calculateUnit();
+	}
+
+	// -- Do not call from outside, just use zoom
+	setDistance(degree) {
+		this.heightToDegree = degree;
+		this.widthToDegree = degree / (this.yDistance / this.xDistance); // keep ratio
+		// 111 to 1.9
+
+		this.calculateUnit();
+	}
+
+	calculateUnit() {
+		// -- Unit, 1pixel to distance
+		const xUnit = this.mapSize[0] / this.widthToDegree;
+		const yUnit = this.mapSize[1] / this.heightToDegree;
+
+		this.xUnit = xUnit;
+		this.yUnit = yUnit;
+	}
+
+	/**
+	 * from a to b, a is the base
+	 * positive : a b order
+	 * negative : b a order
+	 * a : 90, b : 89, -1
+	 * a : 179, b : -179, 2
+	 * a : -179, b : 179, -2
+	 * a : -179, b : -178, 1
+	 **/
+	static DiffX(a, b) {
+		let r = 0;
+
+		r = b - a;
+
+		if(0 > a && b > 0) {
+			r = (180 + a) + (180 - b);
+			r = r * -1;
+		} else if(0 < a && b < 0) {
+			r = (180 - a) + (180 + b);
+		}
+
+		return r;
+	}
+
+	/**
+	 * from a to b, a is base
+	 * positibe : b is below a
+	 * negative : b is above a
+	 **/
+	static diffY(a, b) {
+		return (b - a) * -1;
+	}
+
+	// return [x, y], argument [lat, lng]
+	getPixel(pos) {
+		return [this.getPixelLng(pos[1]), this.getPixelLat(pos[0])];
+	}
+
+	getPixelLat(lat) {
+		const dy = Degree2Pixel.diffY(this.centerPos[0], lat);
+		return ~~(this.mapPixel[1] + dy * this.yUnit);
+	}
+
+	getPixelLng(lng) {
+		const dx = Degree2Pixel.DiffX(this.centerPos[1], lng);
+		return ~~(this.mapPixel[0] + dx * this.xUnit);
+	}
+
+	getInfo() {
+		const list = [];
+		list.push(`Size of box : w * h - ${this.mapSize[0]} * ${this.mapSize[1]} pixel`);
+		list.push(`Width / Height to 1 Degree at [${this.centerPos[0]}, ${this.centerPos[1]}] : ${this.xDistance} / ${this.yDistance}`);
+		list.push(`ZoomLevel : ${this.zoomLevel}`);
+		return list;
+	}
+
+	calculateZoomDistance() {
+		this.setDistance(Math.pow(10, (this.zoomLevel / 10)));
+	}
+
+	zoom(value) {
+		if(isNaN(value)) {
+			return;
+		}
+
+		this.zoomLevel = value;
+		this.calculateZoomDistance();
+	}
+
+	zoomOut() {
+		this.zoomLevel = this.zoomLevel + 1;
+		this.calculateZoomDistance();
+	}
+
+	zoomIn() {
+		this.zoomLevel = this.zoomLevel - 1;
+		this.calculateZoomDistance();
+	}
+}
+
+/**
+ * const d2pZoom = new Degree2Pixel();
+ * d2pZoom.zoom(-10);
+ * d2pZoom.setCenterPos([38, 128]]);
+ * d2pZoom.setMapSize([400, 400]);
+ * 
+ * const xy = d2pZoom.getPixel([39, 129]);
+ */

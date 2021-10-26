@@ -78,12 +78,12 @@ class SegY extends SegYDataView {
 		['seisDatumSrc', 'U4'], // Seismic Datum elevation at source
 		['watColHeiSrc', 'U4'], // Water column height at source location
 		['watColHeiRecv', 'U4'], // Water column height at receiver group location
-		['scalarElev', 'U2'], // Scalar to be applied to all elevations and depths specified in Standrad Trace Header bytes 41-68 to give thre real value
-		['scalarCoord', 'U2'], // Scalar to be applied to all coordinates specified in Standard Trace Header bytes 73–88 and to bytes Trace Header 181–188 to give the real value
-		['srcCoordX', 'U4'], // Source coordinate X
-		['srcCoordY', 'U4'], // Source coordinate Y
-		['grpCoordX', 'U4'], // Group coordinate X
-		['grpCoordY', 'U4'], // Group coordinate Y
+		['scalarElev', 'I2'], // Scalar to be applied to all elevations and depths specified in Standrad Trace Header bytes 41-68 to give thre real value
+		['scalarCoord', 'I2'], // Scalar to be applied to all coordinates specified in Standard Trace Header bytes 73–88 and to bytes Trace Header 181–188 to give the real value
+		['srcCoordX', 'I4'], // Source coordinate X
+		['srcCoordY', 'I4'], // Source coordinate Y
+		['grpCoordX', 'I4'], // Group coordinate X
+		['grpCoordY', 'I4'], // Group coordinate Y
 		['coordUnit', 'U2'], // Coordinate unit, 1 = Length(meter or feet), 2 = Seconds of arc(deprecated), 3 = Decimal degrees, 4 = DMS
 		['weatherVel', 'U2'], // Weathering velocity, ft/s or m/s
 		['subWeatherVel', 'U2'], // Subweathering velocity, ft/s or m/s
@@ -165,6 +165,23 @@ class SegY extends SegYDataView {
 		UINT_3: 15,
 		UINT_1: 16
 	};
+
+	static DATE_TIME_CODE = {
+		1: 'Local',
+		2: 'GMT',
+		3: 'Other',
+		4: 'UTC',
+		5: 'GPS'
+	};
+
+	/**
+	 * Convert Seconds of arc to degree
+	 */
+	static SOA2Degree(sec) {
+		const degree = sec / 3600;
+		return degree;
+	}
+
 	
 	parseDetail() {
 		this.setLittleEndian(false);
@@ -199,6 +216,31 @@ class SegY extends SegYDataView {
 
 	parseTraceOne() {
 		const traceHeader = this.parse(SegY.STRUCT_TRACE_HEADER);
+		const parsedHeader = {};
+
+		// -- Date
+		const date = new Date();
+		date.setUTCFullYear(traceHeader.year);
+		date.setUTCMonth(0);
+		date.setUTCDate(traceHeader.day);
+		date.setUTCHours(traceHeader.hour);
+		date.setUTCMinutes(traceHeader.minute);
+		date.setUTCSeconds(traceHeader.second);
+		date.setUTCMilliseconds(0);
+
+		parsedHeader.date = date;
+		parsedHeader.dateBase = SegY.DATE_TIME_CODE[traceHeader.timeCode];
+
+		// -- Coordinates
+		if(2 === traceHeader.coordUnit) {
+			// -- 2 is seconds of arc which is deprecated but they are using
+			// it says divide it with 3600 but thats not I guess
+			const lng = traceHeader.srcCoordX / (3600 * 1000);
+			const lat = traceHeader.srcCoordY / (3600 * 1000);
+			parsedHeader.srcPos = [lat, lng];
+			// parsedHeader.srcPosStr = 'seconds of arc, lat, lng';
+		}
+
 		this.addParseOffset(10);
 		const traceData = [];
 
@@ -212,9 +254,11 @@ class SegY extends SegYDataView {
 		}
 		return {
 			header: traceHeader,
+			parsedHeader: parsedHeader,
 			data: traceData
 		}
 	}
+
 
 	getPrettyPrintBinHeader() {
 		const brief = this.getBrief();

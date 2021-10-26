@@ -41,18 +41,33 @@ export default class Canvas2DPixel {
 
 	// -- Where color is bgrA
 	draw32(x, y, Abgr) {
-		this.buf32[y * this.w + x] = Abgr;
+		if(x < 0 || y < 0 || x >= this.w || y >= this.h) {
+			return;
+		}
+
+		const idx = y * this.w + x;
+		if(this.buf32.length > idx) {
+			this.buf32[idx] = Abgr;
+		}
 	}
 
 	// -- bgrA
-	// TODO Known bug pixel can go over the edge, b/c no limit check
 	draw32triple(x, y, Abgr) {
+		if(x < 0 || y < 0 || (x + 1) >= this.w || (y + 1) >= this.h) {
+			return;
+		}
+
 		this.buf32[y * this.w + x] = Abgr;
 		this.buf32[(y + 1) * this.w + x] = Abgr;
 		this.buf32[y * this.w + x + 1] = Abgr;
+
 	}
 
 	draw8(x, y, color) {
+		if(x < 0 || y < 0 || x >= this.w || y >= this.h) {
+			return;
+		}
+
 		const index = (y * this.w + x) * 4;
 
 		// A R G B 0xAACCDDFF
