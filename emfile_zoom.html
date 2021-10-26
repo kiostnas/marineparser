@@ -45,6 +45,7 @@
 		<div id="areaFileGroup"></div>
 
 		<h1>Kongsberg MBES file parser</h1>
+		<button class="btnDraw" onclick="onClickZero()">ZERO</button>
 		<button class="btnDraw" onclick="zoomIn()">+</button>
 		<button class="btnDraw" onclick="zoomOut()">-</button>
 		<span class="btnDraw" id="txtPtM">Not Loaded</span>
@@ -301,6 +302,12 @@
 
 	window.offsetXY = [0, 0];
 
+	// -- Reset Position
+	window.onClickZero = () => {
+		window.offsetXY = [0, 0];
+		window.draw(100);
+	}
+
 	window.zoomIn = (e) => {
 		let step = 5;
 		if(lastPtM <= 1) {
@@ -309,7 +316,7 @@
 			step = 1;
 		}
 
-		const PtM = window.lastPtM - step;
+		const PtM = parseFloat((window.lastPtM - step).toFixed(2));
 
 		if(PtM > 0) {
 			window.draw(PtM);
@@ -324,7 +331,8 @@
 			step = 1;
 		}
 
-		const PtM = window.lastPtM + step;
+		const PtM = parseFloat((window.lastPtM + step).toFixed(2));
+
 		if(PtM < 1000) {
 			window.draw(PtM);
 		}
@@ -346,10 +354,16 @@
 
 	window.cmDown = (e) => {
 		window.canvasMouse = [e.offsetX, e.offsetY];
+
+		const image = lastCanvas.ctx.getImageData(offsetXY[0], offsetXY[1], lastCanvas.w - offsetXY[0], lastCanvas.h - offsetXY[1]);
+		window.canvasImage = image;
 	}
 
 	window.cmUp = () => {
 		delete window.canvasMouse;
+		delete window.canvasImage;
+
+		window.draw(lastPtM);
 	}
 
 	window.cmMove = (e) => {
@@ -359,8 +373,9 @@
 
 		window.offsetXY[0] = offsetXY[0] + e.movementX;
 		window.offsetXY[1] = offsetXY[1] + e.movementY;
-
-		draw(lastPtM);
+		
+		lastCanvas.ctx.clearRect(0, 0, lastCanvas.w, lastCanvas.h);
+		lastCanvas.ctx.putImageData(window.canvasImage, offsetXY[0], offsetXY[1]);
 	}
 </script>
 
