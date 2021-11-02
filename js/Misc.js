@@ -166,12 +166,21 @@ class ScaleBox {
 	// -- domain : [], range : []
 	set(name, domain, range) {
 		const scale = ScaleBox.ScaleLinear(domain, range);
-		this.obj[name] = { domain: domain, range: range, scale: scale };
+		const reverseScale = ScaleBox.ScaleLinear(range, domain);
+		this.obj[name] = { domain: domain, range: range, scale: scale, reverseScale: reverseScale };
 	}
 
 	get(name, value) {
 		if (this.obj[name]) {
 			return this.obj[name].scale(value);
+		}
+
+		return false;
+	}
+
+	getReverse(name, value) {
+		if(this.obj[name]) {
+			return this.obj[name].reverseScale(value);
 		}
 
 		return false;
