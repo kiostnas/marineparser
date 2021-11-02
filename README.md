@@ -23,12 +23,12 @@
 ## SEGY
 * Standard SEGY File
 
-[![SEGY](https://img.youtube.com/vi/7efOGsvoHuk/0.jpg)](https://www.youtube.com/watch?v=7efOGsvoHuk)
+[![SEGY](https://img.youtube.com/vi/a6y7NHaxECk/0.jpg)](https://www.youtube.com/watch?v=a6y7NHaxECk)
 
 ## ADCP
 * Teledyne ADCP PD0 Format, LTA, STA...
 
-[![PD0](https://img.youtube.com/vi/Gp5aM9SgZ5U/0.jpg)](https://www.youtube.com/watch?v=Gp5aM9SgZ5U)
+[![PD0](https://img.youtube.com/vi/mtCqlaOvyDU/0.jpg)](https://www.youtube.com/watch?v=mtCqlaOvyDU)
 
 ## TXT CSV
 * NMEA0183 - from seapath or other gps
