@@ -80,6 +80,31 @@ export default class GeoSpatial {
 		var d = R * c; // Distance in km
 		return d;
 	}
+
+	// -- Degree minute to Degree
+	static DM2D(value) {
+		var abs = Math.abs(value);
+		var degree = Math.floor(abs / 100);
+		var minute = (abs - (degree * 100)) / 60;
+		var result = degree + minute;
+	
+		if(value < 0) {
+			result = result * -1;
+		}
+	
+		return result;
+	}
+	
+	// -- Degree to Degree minute
+	static D2DM(d) {
+		var num = Math.abs(parseInt(d));
+		var fp = (Math.abs(d) - num) * 60;
+		num = num * 100 + fp;
+		if(d < 0) {
+			num = num * -1;
+		}
+		return num
+	}
 }
 
 class Degree2Pixel {
