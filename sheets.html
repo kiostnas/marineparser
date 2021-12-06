@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Calibration sheets</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+		.btnDraw {
+			display: none;
+		}
+
+		.flex-container {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			justify-content: space-around;
+			align-items: normal;
+			align-content: normal;
+		}
+
+		.flex-items:nth-child(1) {
+			display: block;
+			flex-grow: 0;
+			flex-shrink: 1;
+			flex-basis: auto;
+			align-self: auto;
+			order: 0;
+		}
+
+		.flex-items:nth-child(2) {
+			display: block;
+			flex-grow: 0;
+			flex-shrink: 1;
+			flex-basis: auto;
+			align-self: auto;
+			order: 0;
+		}
+
+		td {
+			padding-left: 1em;
+			padding-right: 2em;
+		}
+
+		.areaTable>thead>tr>th {
+			cursor: pointer;
+		}
+	</style>
+</head>
+<body>
+	<div>
+		<div id="areaFileGroup"></div>
+
+		<h1>Calibration sheets from the Seabird XML, CAL, XMLCON, PDF</h1>
+		<h4>use data from XML, CAL, XMLCON, read just file name from PDF</h4>
+		<span><button class="btnDraw" onclick="parseTest()">Parse</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept="*" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div id="areaResult">
+		<h4 id="txtCount"></h4>
+		<p id="txtStatus"></p>
+	</div>
+	<div class="flex-container">
+		<div id="areaTable" class="flex-items"></div>
+		<div id="areaSummary" class="flex-items"></div>
+	</div>
+</body>
+
+<script type="text/javascript" src="./js/Misc.js"></script>
+<script type="text/javascript">
+const TYPES = {
+	'UNKNOWN': 'UNKNOWN',
+	'3P': '3P',
+	'38': '38',
+	'4C': '4C',
+	'43': '43',
+	'45': '45',
+	'21': '21',
+	'32': '32',
+	'5T': '5T',
+	'09': '09',
+	'18': '18',
+	'TRANS': 'TRANS',
+	'FLUORE': 'FLUORE',
+	'PAR': 'PAR',
+	'ALTI': 'ALTI',
+}
+
+const TYPE_MAP = {
+	'UNKNOWN': {title: 'UNKNOWN type'},
+	'3P': { title: '3P Temperature', list: ['SBE3'] },
+	'38': { title: '38 Temperature' },
+	'4C': { title: '4C Conductivity', list: ['SBE4'] },
+	'43': { title:'43 Disolved oxygen', list: ['SBE43'] },
+	'45': { title: '45 TSG' },
+	'21': { title: '21 TSG' },
+	'32': { title: '32 Trigger' },
+	'5T': { title: '5T Pump' },
+	'09': { title: '09 Pressure' },
+	'18': { title: '18 PH' },
+	'TRANS': { title: 'Transmissiometer WET CST-XX' },
+	'FLUORE': { title: 'Fluorometer WET' },
+	'PAR': { title: 'PAR Biosperical' },
+	'ALTI': { title: 'Altimeter Biosperical' },
+}
+
+// -- Case sensitive
+function judgeTypeByString(str) {
+	if(!str) {
+		return TYPES.UNKNOWN;
+	}
+
+	for(let [k, v] of Object.entries(TYPE_MAP)) {
+		if(!v.list || 0 === v.list.length) {
+			continue;
+		}
+
+		if(v.list.includes(str)) {
+			return k;
+		}
+	}
+
+	return TYPES.UNKNOWN;
+}
+
+</script>
+<script type="module">
+	import DNDFileList from './jsm/DNDFileList.js'
+	import {SeaSaveXMLCON} from './jsm/CTDSeabird.js'
+
+	DNDLocalFile(document.getElementById('drop-area'), async (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		const listCal = [], listXML = [], listXMLCON = [], listPDF = [];
+		const resultCal = [], resultXML = [], resultXMLCON = [], resultPDF = [], resultError = [];
+
+		for(let file of files) {
+			if(file.name.match(/\.cal$/i)) {
+				listCal.push(file);
+			} else if(file.name.match(/\.xml$/i)) {
+				listXML.push(file);
+			} else if(file.name.match(/\.xmlcon$/i)) {
+				listXMLCON.push(file);
+			} else if(file.name.match(/\.pdf$/i)) {
+				listPDF.push(file);
+			} else {
+				resultError.push(file);
+			}
+		}
+
+		const count = `Total : ${files.length}, CAL : ${listCal.length}, XML : ${listXML.length}, XMLCON : ${listXMLCON.length}, PDF : ${listPDF.length}`;
+		document.getElementById('txtCount').innerHTML = count;
+
+		for (let i = 0; i < listCal.length; i++) {
+			const file = listCal[i];
+			
+			setProgress(`Cal ${i + 1} / ${listCal.length}`);
+			const r = await parseCal(file);
+			if(r) {
+				r.name = file.name;
+				r.file = file;
+				resultCal.push(r);
+			} else {
+				resultError.push(file);
+			}
+		}
+
+		for (let i = 0; i < listXML.length; i++) {
+			const file = listXML[i];
+			
+			setProgress(`XML ${i + 1} / ${listXML.length}`);
+			const r = await parseXML(file);
+			if(r) {
+				r.name = file.name;
+				r.file = file;
+				resultXML.push(r);
+			} else {
+				resultError.push(file);
+			}
+		}
+
+		for (let i = 0; i < listXMLCON.length; i++) {
+			const file = listXMLCON[i];
+			
+			setProgress(`XMLCON ${i + 1} / ${listXMLCON.length}`);
+			const r = await parseXMLCON(file);
+			if(r) {
+				r.name = file.name;
+				r.file = file;
+				resultXMLCON.push(r);
+			} else {
+				resultError.push(file);
+			}
+		}
+
+		for (let i = 0; i < listPDF.length; i++) {
+			const file = listPDF[i];
+			
+			setProgress(`PDF ${i + 1} / ${listPDF.length}`);
+			const r = parsePDFName(file);
+			if(r) {
+				r.name = file.name;
+				r.file = file;
+				resultPDF.push(r);
+			} else {
+				resultError.push(file);
+			}
+		}
+
+		const countTotalParsed = resultCal.length + resultXML.length + resultXMLCON.length + resultPDF.length;
+		const resultErrorNames = [];
+		resultError.forEach(f => resultErrorNames.push(f.name));
+
+		setProgress(`Total ${countTotalParsed} files parsed, invalid ${resultError.length} : [${resultErrorNames.join(', ')}]`);
+
+		const all = resultCal.concat(...resultXML, ...resultXMLCON, ...resultPDF);
+		const merged = mergeSensors(all);
+
+		window.dataSourceMerged = merged;
+		presentTable();
+	});
+
+	function setProgress(html) {
+		document.getElementById('txtStatus').innerHTML = html;
+	}
+
+	async function parseCal(file) {
+		const result = {
+			type: TYPES.UNKNOWN,
+			serial: undefined,
+			date: undefined,
+		}
+
+		const f = await readFileString(file);
+		const lines = f.split('\n');
+		lines.forEach(l => {
+			// -- Type by line
+			const type = l.match(/INSTRUMENT_TYPE=(.*)/i);
+			if(type) {
+				result.type = judgeTypeByString(type[1]);
+			}
+			if(l.match(/SBE38/i)) {
+				if(TYPES.UNKNOWN === result.type) {
+					result.type = TYPES['38'];
+				} else {
+					console.error('Invalid type SBE38 but another type already taken');
+					console.info(f);
+				}
+			}
+
+			// -- Serial
+			const serial = l.match(/SERIALNO=(.*)/i);
+			if(serial) {
+				result.serial = serial[1];
+			}
+
+			// -- Date 09-Sep-21
+			const date = l.match(/.?CALDATE=(.*)/);
+			if(date && date[1] !== 'No-Cal' && date[1].match(/.*-.*-.*/)) {
+				result.date = createDateFromUTCMS(Date.parse(date[1]));
+			}
+		});
+
+		// -- TSG 45, PCALDATE is only at 45
+		if(TYPES.UNKNOWN && f.match(/TCALDATE/ig) && f.match(/CCALDATE/ig)) {
+			if(f.match(/PCALDATE/ig)) {
+				result.type = TYPES['21'];
+			} else {
+				result.type = TYPES['45'];
+			}
+		}
+
+		return result;
+	}
+
+	// -- inner function from parseXML
+	function parseXMLJSON(json) {
+		const result = {
+			type: TYPES.UNKNOWN,
+			serial: undefined,
+			date: undefined,
+		}
+
+		let sensorRef = undefined;
+		if(json.TemperatureSensor) {
+			result.type = TYPES['3P'];
+			sensorRef = json.TemperatureSensor;
+		} else if(json.OxygenSensor) {
+			result.type = TYPES['43'];
+			sensorRef = json.OxygenSensor;
+		} else if(json.ConductivitySensor) {
+			result.type = TYPES['4C'];
+			sensorRef = json.ConductivitySensor;
+		}
+
+		if(sensorRef) {
+			const serial = sensorRef.SerialNumber['#text'];
+			const date = sensorRef.CalibrationDate['#text'];
+			result.serial = serial;
+			result.date = createDateFromUTCMS(Date.parse(date));
+		}
+
+		return result;
+	}
+
+	async function parseXML(file) {
+		const f = await readFileString(file);
+		const xml = SeaSaveXMLCON.parseXml(f);
+		const json = SeaSaveXMLCON.xmlToJson(xml);
+
+		return parseXMLJSON(json);
+	}
+
+	async function parseXMLCON(file) {
+		const result = {
+			type: TYPES.UNKNOWN,
+			serial: undefined,
+			date: undefined,
+			file: file,
+		}
+
+		const f = await readFileString(file);
+		const xml = SeaSaveXMLCON.parseXml(f);
+		const json = SeaSaveXMLCON.xmlToJson(xml);
+
+		try {
+			const sensorResult = [];
+			const sensors = json['SBE_InstrumentConfiguration']['Instrument']['SensorArray']['Sensor'];
+			sensors.forEach(s => {sensorResult.push(parseXMLJSON(s))});
+
+			// -- TSG 21
+			const instrument = json['SBE_InstrumentConfiguration']['Instrument'];
+			if('4' === instrument['@attributes'].Type) {
+				result.type = TYPES['21'];
+				// -- will have 2 sensorResult but just use first
+				result.serial = sensorResult[0].serial;
+				result.date = sensorResult[0].date;
+			}
+		} catch(e) {
+			console.error('Failed to parse XMLCON file, invalid XML structure');
+			console.info(f);
+		}
+
+		return result;
+
+		let sensorRef = undefined;
+		if(json.TemperatureSensor) {
+			result.type = TYPES['3P'];
+			sensorRef = json.TemperatureSensor;
+		} else if(json.OxygenSensor) {
+			result.type = TYPES['43'];
+			sensorRef = json.OxygenSensor;
+		} else if(json.ConductivitySensor) {
+			result.type = TYPES['4C'];
+			sensorRef = json.ConductivitySensor;
+		}
+
+		if(sensorRef) {
+			const serial = sensorRef.SerialNumber['#text'];
+			const date = sensorRef.CalibrationDate['#text'];
+			result.serial = serial;
+			result.date = createDateFromUTCMS(Date.parse(date));
+		}
+
+		return result;
+	}
+
+	function parsePDFName(file) {
+		const name = file.name;
+
+		const rCST = pdfCST(name);
+		if(rCST) {
+			return rCST;
+		}
+
+		const rSerialDate = pdfTypeSerialDate(name);
+		if(rSerialDate) {
+			return rSerialDate;
+		}
+
+		const rType = pdfTypeSerialOnly(name);
+		if(rType) {
+			return rType;
+		}
+
+		return;
+	}
+
+	function pdfCST(name) {
+		const result = {
+			type: TYPES.UNKNOWN,
+			serial: undefined,
+			date: undefined,
+		}
+
+		const cst = name.match(/^CST-(\d+)DR.*/i);
+		if(cst) {
+			result.type = TYPES.TRANS;
+			result.serial = cst[1];
+			return result;
+		}
+
+		return;
+	}
+
+	/**
+	 * SBE_Number_TypeSerial_Date~.pdf only
+	 * not for SBE-43-0825-PressureTest.pdf
+	 * 
+	 * SBE 3 T4637 13Sep21.pdf
+	 * SBE 3 T6287 14Sep21-Post Cruise.pdf
+	 * SBE 38 T0384 28Sep21.pdf
+	 * SBE 45 T0600 10Sep21.pdf
+	 * SBE 4 C4561 15Sep21.pdf
+	 * SBE 21 C3432 15Jun21.pdf
+	 **/
+	function pdfTypeSerialDate(name) {
+		const result = {
+			type: TYPES.UNKNOWN,
+			serial: undefined,
+			date: undefined,
+		}
+
+		const m = name.match(/^SBE (\d{1,2}) (\w)(\d{4}) (.*)\.pdf/i);
+		if(!m) {
+			return;
+		}
+
+		// -- Types
+		if('4' === m[1] && 'C' === m[2].toUpperCase()) {
+			result.type = TYPES['4C'];
+		} else if('3' === m[1] && 'T' === m[2].toUpperCase()) {
+			result.type = TYPES['3P'];
+		} else if('38' === m[1] && 'T' === m[2].toUpperCase()) {
+			result.type = TYPES['38'];
+		} else if('21' === m[1] && 'T' === m[2].toUpperCase()) {
+			result.type = TYPES['21'];
+		} else if('21' === m[1] && 'C' === m[2].toUpperCase()) {
+			result.type = TYPES['21'];
+		} else if('45' === m[1] && 'T' === m[2].toUpperCase()) {
+			result.type = TYPES['45'];
+		} else if('45' === m[1] && 'C' === m[2].toUpperCase()) {
+			result.type = TYPES['45'];
+		} else if('43' === m[1] && 'O' === m[2].toUpperCase()) {
+			result.type = TYPES['43'];
+		} else {
+			console.error(`pdfTypeSerialDate : Unknown type for ${m[1]}.${m[2]}`);
+		}
+
+		// -- Serial
+		result.serial = m[3];
+		const date = m[4].replace(/\-.*/, ''); // 14Sep21-Post Cruise.pdf
+		result.date = createDateFromUTCMS(Date.parse(date));
+
+		return result;
+	}
+
+	function pdfTypeSerialOnly(name) {
+		const result = {
+			type: TYPES.UNKNOWN,
+			serial: undefined,
+			date: undefined,
+		}
+
+		const m = name.match(/^SBE\-(.+?)\-(.+?)\-.*/i);
+
+		if(!m) {
+			return;
+		}
+
+		if('3' === m[1]) {
+			result.type = TYPES['3P'];
+		} else if('43' === m[1]) {
+			result.type = TYPES['43'];
+		} else if('4' === m[1]) {
+			result.type = TYPES['4C'];
+		} else if('38' === m[1]) {
+			result.type = TYPES['38'];
+		} else if('21' === m[1]) {
+			result.type = TYPES['21'];
+		} else if('5T' === m[1]) {
+			result.type = TYPES['5T'];
+		} else {
+			console.error(`pdfTypeSerialOnly : Unknown type for ${m[1]}`);
+		}
+
+		if(result.type) {
+			result.serial = m[2];
+			return result;
+		}
+	}
+
+	function presentTable() {
+		const obj = window.dataSourceMerged;
+
+		let sorted = [];
+		const countTypes = {};
+		const serialTypes = {};
+		for (const [k, v] of Object.entries(obj)) {
+			const o = sayBrief(v);
+			sorted.push(o);
+
+			if(!countTypes[o.type]) {
+				countTypes[o.type] = 1;
+			} else {
+				countTypes[o.type]++;
+			}
+
+			if(!serialTypes[o.type]) {
+				serialTypes[o.type] = [];
+			}
+			serialTypes[o.type].push(o.serial);
+		}
+
+		if(!window.sortOrder || 'type' === window.sortOrder) {
+			sorted.sort((a, b) => {
+				if(a.type < b.type) {
+					return -1;
+				} else if(a.type > b.type) {
+					return 1;
+				} else {
+					if(a.serial < b.serial) {
+						return -1;
+					} else if(a.serial > b.serial) {
+						return 1;
+					}
+				}
+				return 0;
+			});
+		} else if('serial' === window.sortOrder) {
+			sorted.sort((a, b) => {
+				if(a.serial < b.serial) {
+					return -1;
+				} else if(a.serial > b.serial) {
+					return 1;
+				} else {
+					if(a.type < b.type) {
+						return -1;
+					} else if(a.type > b.type) {
+						return 1;
+					}
+				}
+				return 0;
+			});
+		} else if('date' === window.sortOrder) {
+			sorted.sort((a, b) => {
+				if(a.date < b.date) {
+					return -1;
+				} else if(a.date > b.date) {
+					return 1;
+				} else {
+					if(a.type < b.type) {
+						return -1;
+					} else if(a.type > b.type) {
+						return 1;
+					}
+				}
+				return 0;
+			});
+		}
+
+		// -- Table
+		const listTD = [];
+		sorted.forEach(o => {
+			const item = `<tr><td>${o.type}</td><td>${o.serial}</td><td>${o.dateStr ? o.dateStr : '-'}</td></tr>`;
+			listTD.push(item);
+		});
+
+		const strThead = `<thead><tr><th onclick="onClickType()">Type</th><th onclick="onClickSerial()">Serial</th><th onclick="onClickDate()">Date</th></tr></thead>`;
+		const strTbody = `<tbody>${listTD.join('\n')}</tbody>`;
+
+		const table = `<table class="areaTable">${strThead}${strTbody}</table>`;
+
+		document.getElementById('areaTable').innerHTML = table;
+
+		// -- Summary
+		const listP = [];
+		for(let [k, v] of Object.entries(countTypes)) {
+			const list = serialTypes[k];
+			const item = `<tr><td>${k}</td><td>${v}</td><td>${list.join(', ')}</td></tr>`;
+			listP.push(item);
+		}
+
+		const strTheadSummary = `<thead><tr><th>Type</th><th>Count</th><th>Serials</th></tr></thead>`;
+		const strTbodySummary = `<tbody>${listP.join('\n')}</tbody>`;
+
+		const tableSummary = `<table>${strTheadSummary}${strTbodySummary}</table>`;
+
+		document.getElementById('areaSummary').innerHTML = tableSummary;
+	}
+	window.presentTable = presentTable;
+
+	function mergeSensors(list) {
+		const merged = {};
+		list.forEach(item => {
+			const key = `${item.type}_${item.serial}`;
+			if(!merged[key]) {
+				merged[key] = [];
+			}
+
+			merged[key].push(item);
+		});
+
+		return merged;
+	}
+
+	// -- Use xml, xmlcon, cal, pdf as date priority
+	function sayBrief(listOneSensor) {
+		if(!listOneSensor || 0 === listOneSensor.length) {
+			return;
+		}
+
+		const result = {
+			type: listOneSensor[0].type,
+			serial: listOneSensor[0].serial,
+			count: listOneSensor.length,
+			ref: listOneSensor
+		};
+
+		const found = listOneSensor.find(s => s.name.match(/\.xml$/i) && s.date) ||
+			listOneSensor.find(s => s.name.match(/\.xmlcon$/i) && s.date) ||
+			listOneSensor.find(s => s.name.match(/\.cal$/i) && s.date) ||
+			listOneSensor.find(s => s.name.match(/\.pdf$/i) && s.date);
+
+		if(found && found.date) {
+			result.date = found.date;
+			result.dateStr = result.date.toISOString().substring(0, 10);
+		}
+
+		return result;
+	}
+
+	function createDateFromUTCMS(ms) {
+		const now = new Date();
+		const offsetms = now.getTimezoneOffset() * 60 * 1000;
+		return new Date(ms - offsetms);
+	}
+
+	window.onClickType = () => {
+		window.sortOrder = 'type';
+		presentTable();
+	};
+
+	window.onClickSerial = () => {
+		window.sortOrder = 'serial';
+		presentTable();
+	};
+
+	window.onClickDate = () => {
+		window.sortOrder = 'date';
+		presentTable();
+	};
+</script>
+</html>
