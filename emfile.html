@@ -119,10 +119,10 @@
 </script>
 <script type="text/javascript" src="./js/Misc.js"></script>
 <script type="module">
-	import DNDFileList from './jsm/DNDFileList.js'
+	import {DNDFileList} from './jsm/DNDFileList.js'
 	import {EMParamInstall, EMParamRuntime, EMPosition, EMXYZ88, EMAll, EMAllBatch2020} from './jsm/EMFileFormat.js';
-	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
-	import MPLog from './jsm/MPLog.js';
+	import {Canvas2DPixel} from './jsm/Canvas2DPixel.js';
+	import {MPLog} from './jsm/MPLog.js';
 	
 	DNDLocalFile(document.getElementById('drop-area'), (files) => {
 		// -- Hide drop area

@@ -1,6 +1,6 @@
-import EndianDataView from './EndianDataView.js';
-import GeoSpatial from './GeoSpatial.js';
-import MPLog from './MPLog.js';
+import {EndianDataView} from './EndianDataView.js';
+import {GeoSpatial} from './GeoSpatial.js';
+import {MPLog} from './MPLog.js';
 
 // -- Class order critical
 export {EMEndianDataView, EMParamInstall, EMParamRuntime, EMPosition, EMXYZ88, EMAll};

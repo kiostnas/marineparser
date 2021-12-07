@@ -1,4 +1,6 @@
-export default class Canvas2DPixel {
+export {Canvas2DPixel}
+
+class Canvas2DPixel {
 	constructor(elementId) {
 		this.canvas = undefined;
 		this.ctx = undefined;

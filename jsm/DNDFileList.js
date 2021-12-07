@@ -1,4 +1,6 @@
-export default class DNDFileList {
+export {DNDFileList}
+
+class DNDFileList {
 	constructor(listExts) {
 		this.listFiles = [];
 		this.mapGroup = {};

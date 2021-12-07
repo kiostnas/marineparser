@@ -1,4 +1,4 @@
-import EndianDataView from '../jsm/EndianDataView.js';
+import {EndianDataView} from './EndianDataView.js';
 
 // -- Class order critical
 export {SegYDataView, SegY};

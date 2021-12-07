@@ -4,7 +4,7 @@ export {MPLog};
  * To track time consuming jobs
  */
 
-export default class MPLog {
+class MPLog {
 	constructor() {
 		this.clear();
 	}

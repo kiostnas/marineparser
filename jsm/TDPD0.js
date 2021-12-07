@@ -1,4 +1,4 @@
-import EndianDataView from './EndianDataView.js';
+import {EndianDataView} from './EndianDataView.js';
 
 export { TDPD0, PD0, PD0Header, PD0Fixed, PD0Variable, PD0Navigation, PD0Velocity };
 

@@ -1,5 +1,7 @@
+export {EndianDataView}
+
 // -- Just not to use little endian all the time
-export default class EndianDataView extends DataView {
+class EndianDataView extends DataView {
 	constructor(arrayBuffer, byteOffset, byteLength) {
 		super(arrayBuffer, byteOffset, byteLength);
 

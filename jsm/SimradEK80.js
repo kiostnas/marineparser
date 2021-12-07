@@ -1,5 +1,4 @@
-import EndianDataView from './EndianDataView.js';
-import GeoSpatial from './GeoSpatial.js';
+import {EndianDataView} from './EndianDataView.js';
 
 export {SimradEK80Raw, SimradEK80RawBatch2020};
 

@@ -1,6 +1,6 @@
 export { GeoSpatial, Degree2Pixel };
 
-export default class GeoSpatial {
+class GeoSpatial {
 	// https://gist.github.com/mathiasbynens/354587
 	/*!
 	* JavaScript function to calculate the destination point given start point latitude / longitude (numeric degrees), bearing (numeric degrees) and distance (in m).

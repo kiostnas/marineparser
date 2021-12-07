@@ -207,9 +207,9 @@
 
 <script type="text/javascript" src="./js/Misc.js"></script>
 <script type="module">
-	import DNDFileList from './jsm/DNDFileList.js'
-	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
-	import GeoSpatial from './jsm/GeoSpatial.js';
+	import {DNDFileList} from './jsm/DNDFileList.js'
+	import {Canvas2DPixel} from './jsm/Canvas2DPixel.js';
+	import {GeoSpatial} from './jsm/GeoSpatial.js';
 	import {TDPD0, PD0Variable, PD0Navigation} from './jsm/TDPD0.js';
 
 	// -- Draw color scale
@@ -839,7 +839,7 @@
 <!-- Draw coordinates -->
 <script type="module">
 	import {TDPD0} from './jsm/TDPD0.js';
-	import Canvas2DPixel from './jsm/Canvas2DPixel.js';
+	import {Canvas2DPixel} from './jsm/Canvas2DPixel.js';
 	import {GeoSpatial, Degree2Pixel} from './jsm/GeoSpatial.js';
 
 	const d2pZoom = new Degree2Pixel();
