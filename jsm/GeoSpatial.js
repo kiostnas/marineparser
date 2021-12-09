@@ -1,3 +1,5 @@
+// ##export="GeoSpatial:GeoSpatial"
+// ##export="Degree2Pixel:Degree2Pixel"
 export { GeoSpatial, Degree2Pixel };
 
 class GeoSpatial {

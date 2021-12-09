@@ -2,6 +2,14 @@ import {EndianDataView} from './EndianDataView.js';
 import {GeoSpatial} from './GeoSpatial.js';
 import {MPLog} from './MPLog.js';
 
+// ##export="EMEndianDataView:KB.EMEndianDataView"
+// ##export="EMParamInstall:KB.EMParamInstall"
+// ##export="EMParamRuntime:KB.EMParamRuntime"
+// ##export="EMPosition:KB.EMPosition"
+// ##export="EMXYZ88:KB.EMXYZ88"
+// ##export="EMAll:KB.EMAll"
+// ##export="EMAllBatch2020:KB.EMAllBatch2020"
+
 // -- Class order critical
 export {EMEndianDataView, EMParamInstall, EMParamRuntime, EMPosition, EMXYZ88, EMAll};
 

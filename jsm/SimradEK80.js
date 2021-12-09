@@ -1,5 +1,7 @@
 import {EndianDataView} from './EndianDataView.js';
 
+// ##export="SimradEK80Raw:SR.SimradEK80Raw"
+// ##export="SimradEK80RawBatch2020:SR.SimradEK80RawBatch2020"
 export {SimradEK80Raw, SimradEK80RawBatch2020};
 
 class SimradEK80EndianView extends EndianDataView {

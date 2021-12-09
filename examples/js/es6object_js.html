@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All source into one object</title>
+    <style>
+        .half {
+            width: 40vw;
+            height: 90vh;
+        }
+    </style>
+</head>
+<body>
+    <textarea id="areaResultES6Object" class="half"></textarea>
+    <textarea id="areaResultNodejs" class="half"></textarea>
+    <br>
+    <button onclick="onClickES6()">Download ES6Object</button>
+    <script type="text/html" id="templateES6Object">
+(function() {
+#body#
+
+#NAME_OBJ# = {};
+#initNS#
+#export#
+
+window.__MARINE_PARSER_OBJECT_2021__ = #NAME_OBJ#;
+})();
+    </script>
+
+    <script type="text/javascript">
+        const NAME_OBJ = 'MarineParser';
+
+        async function main() {
+            const list = [
+                // -- Backend order critical
+                '../../jsm/Common.js',
+                '../../jsm/MPLog.js',
+                '../../jsm/Canvas2DPixel.js',
+                '../../jsm/GeoSpatial.js',
+                '../../jsm/EndianDataView.js',
+                // -- Backend essential files but order not critical
+                '../../jsm/CTDSeabird.js',
+                '../../jsm/EMFileFormat.js',
+                '../../jsm/SEGY.js',
+                '../../jsm/SimradEK80.js',
+                '../../jsm/TDPD0.js',
+                '../../jsm/TXTCSV.js',
+
+                // -- Frontend, order not critical
+                '../../jsm/frontend/Misc.js',
+                '../../jsm/frontend/DNDFileList.js',
+            ];
+
+            const results = [];
+
+            for (let index = 0; index < list.length; index++) {
+                const file = list[index];
+                await fetch(file).then((res) => res.text().then(text => {
+                    const r = filterModule(text);
+                    results.push(r);
+                }));
+            }
+
+            const stringJS = wrapES6object(results);
+
+            document.getElementById('areaResultES6Object').value = stringJS;
+
+            // console.log(stringJS);
+        }
+
+        // -- Remove export and import
+        function filterModule(str) {
+            // -- Grab
+            const listExport = [];
+            const lines = str.split('\n');
+            for (let index = 0; index < lines.length; index++) {
+                const line = lines[index];
+                if (line.match(/\/\/.*##export\s*=\s*".*"/)) {
+                    const m = line.match(/\/\/.*##export\s*=\s*"(.*)"/);
+                    listExport.push(m[1]);
+                }
+            }
+
+            // -- Remove export, import, ##export="XX"
+            const newStr = str.replace(/^export.*/gm, '').replace(/^import.*/gm, '').replace(/\/\/.*##export\s*=\s*".*"/gm, '');
+
+            return { str: newStr, ex: listExport };
+        }
+
+        function wrapES6object(results) {
+            const element = document.getElementById('templateES6Object');
+            const template = element.innerHTML;
+
+            let newBody = '';
+            const initEx = []; // -- namespace = {}
+            const listEx = []; // -- MarineParser.Save = Save;
+            let listNamespace = []; // -- just to process, collect all ns
+            results.forEach(r => {
+                // -- Body
+                newBody = newBody + '\n' + r.str;
+
+                // -- Export
+                if (r.ex && 0 < r.ex.length) {
+                    r.ex.forEach(ex => {
+                        const resultExport = es6objectExport(ex);
+                        if (!resultExport) {
+                            return;
+                        }
+
+                        listEx.push(resultExport.expression);
+                        listNamespace = listNamespace.concat(resultExport.namespaces);
+                    });
+                }
+            });
+
+            let uniqueNamespace = [...(new Set(listNamespace))];
+            uniqueNamespace.sort((a, b) => {
+                const adot = (a.match(/\./g) || []).length;
+                const bdot = (b.match(/\./g) || []).length;
+                return adot - bdot;
+            });
+
+            // -- initEx - MarineParser.Seabird = {};
+            uniqueNamespace.forEach(ns => initEx.push(`${NAME_OBJ}.${ns} = {};`));
+
+            let result = template.replace('#body#', newBody)
+                .replace(/#NAME_OBJ#/g, NAME_OBJ)
+                .replace('#initNS#', initEx.join('\n'))
+                .replace('#export#', listEx.join('\n'));
+
+            return result;
+        }
+
+        // -- src:namespace.namespace2.objectorfunction
+        function es6objectExport(ex) {
+            const exOne = ex.split(':');
+            if (2 !== exOne.length) {
+                console.error(`es6objectExport : ${ex} is not divided with ':' should be like src:ns1.ns2`);
+                return;
+            }
+
+            const src = exOne[0];
+            const dest = exOne[1];
+
+            const namespaces = dest.split('.');
+            const listNamespaces = [];
+            while (1 < namespaces.length) {
+                const ns = namespaces.shift();
+
+                let lastNS = listNamespaces[listNamespaces.length - 1];
+                if (lastNS) {
+                    lastNS = lastNS + '.';
+                } else {
+                    lastNS = '';
+                }
+
+                listNamespaces.push(lastNS + ns);
+            }
+
+            const result = `${NAME_OBJ}.${dest} = ${src};`;
+            return { expression: result, namespaces: listNamespaces };
+        }
+
+        setTimeout(async () => {
+            await main();
+        }, 1);
+
+        function onClickES6() {
+            const filename = 'MarineParser.js';
+            const text = document.getElementById('areaResultES6Object').value;
+
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
+    </script>
+</body>
+
+</html>

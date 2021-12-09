@@ -1,5 +1,13 @@
 import {EndianDataView} from './EndianDataView.js';
 
+// ##export="TDPD0:TD.TDPD0"
+// ##export="PD0:TD.PD0"
+// ##export="PD0Header:TD.PD0Header"
+// ##export="PD0Fixed:TD.PD0Fixed"
+// ##export="PD0Variable:TD.PD0Variable"
+// ##export="PD0Navigation:TD.PD0Navigation"
+// ##export="PD0Velocity:TD.PD0Velocity"
+
 export { TDPD0, PD0, PD0Header, PD0Fixed, PD0Variable, PD0Navigation, PD0Velocity };
 
 // -- Only one PD0
@@ -1092,7 +1100,7 @@ class PD0BinVariableAttitude extends PD0 {
 }
 
 
-export default class TDPD0 extends EndianDataView {
+class TDPD0 extends EndianDataView {
 	static HEADER_HID = 0x7F7F;
 
 	static UNHANDLED_STR = 'Unhandled string';

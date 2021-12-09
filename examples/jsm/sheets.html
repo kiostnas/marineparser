@@ -95,7 +95,6 @@
 	</div>
 </body>
 
-<script type="text/javascript" src="./js/Misc.js"></script>
 <script type="text/javascript">
 const TYPES = {
 	'UNKNOWN': 'UNKNOWN',
@@ -154,10 +153,11 @@ function judgeTypeByString(str) {
 
 </script>
 <script type="module">
-	import {DNDFileList} from './jsm/DNDFileList.js'
-	import {SeaSaveXMLCON} from './jsm/CTDSeabird.js'
+	import {DOMUtil, FileUtil} from '../../jsm/frontend/Misc.js';
+	import {DNDFileList} from '../../jsm/frontend/DNDFileList.js';
+	import * as SB from '../../jsm/CTDSeabird.js';
 
-	DNDLocalFile(document.getElementById('drop-area'), async (files) => {
+	DNDFileList.LocalFile(document.getElementById('drop-area'), async (files) => {
 		// -- Hide drop area
 		document.getElementById('drop-area').style.display = 'none';
 
@@ -261,7 +261,7 @@ function judgeTypeByString(str) {
 			date: undefined,
 		}
 
-		const f = await readFileString(file);
+		const f = await FileUtil.readFileString(file);
 		const lines = f.split('\n');
 		lines.forEach(l => {
 			// -- Type by line
@@ -334,9 +334,9 @@ function judgeTypeByString(str) {
 	}
 
 	async function parseXML(file) {
-		const f = await readFileString(file);
-		const xml = SeaSaveXMLCON.parseXml(f);
-		const json = SeaSaveXMLCON.xmlToJson(xml);
+		const f = await FileUtil.readFileString(file);
+		const xml = SB.SeaSaveXMLCON.parseXml(f);
+		const json = SB.SeaSaveXMLCON.xmlToJson(xml);
 
 		return parseXMLJSON(json);
 	}
@@ -349,9 +349,9 @@ function judgeTypeByString(str) {
 			file: file,
 		}
 
-		const f = await readFileString(file);
-		const xml = SeaSaveXMLCON.parseXml(f);
-		const json = SeaSaveXMLCON.xmlToJson(xml);
+		const f = await FileUtil.readFileString(file);
+		const xml = SB.SeaSaveXMLCON.parseXml(f);
+		const json = SB.SeaSaveXMLCON.xmlToJson(xml);
 
 		try {
 			const sensorResult = [];

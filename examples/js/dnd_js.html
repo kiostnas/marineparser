@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>DND</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+		.btnDraw {
+			display: none;
+		}
+	</style>
+</head>
+<body class="container-fluid">
+	<div id="page-wrapper">
+		<div id="areaFileGroup"></div>
+
+		<h1>Hello this is a title</h1>
+		<span><button class="btnDraw" onclick="parseTest()">Parse</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept="*" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div>
+		<canvas id="canvas" width="1000" height="1000"></canvas>
+		<span id="areaText" style="width: 500px; height: 500; display: inline-block; border-style: dotted;"></div>
+	</div>
+</body>
+
+<script type="module">
+	import {DNDFileList} from '../../jsm/frontend/DNDFileList.js';
+	import {Canvas2DPixel} from '../../jsm/Canvas2DPixel.js';
+	
+	DNDLocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		// -- TODO must change the file name
+		const dndFL = new DNDFileList(['any']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			// -- Create array buffer Class
+			window.fileRead = ab;
+
+			// -- show buttons
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+		});
+	});
+
+	window.parseTest = () => {
+		console.log(window.fileRead);
+		alert(window.fileRead.byteLength);
+
+		const txtP = document.getElementById('areaText');
+		txtP.innerText = `File Read : ${window.fileRead.byteLength} bytes`;
+	}
+</script>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>DND</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+		.btnDraw {
+			display: none;
+		}
+	</style>
+</head>
+<body class="container-fluid">
+	<div id="page-wrapper">
+		<div id="areaFileGroup"></div>
+
+		<h1>Hello this is a title</h1>
+		<span><button class="btnDraw" onclick="parseTest()">Parse</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept="*" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div>
+		<canvas id="canvas" width="1000" height="1000"></canvas>
+		<span id="areaText" style="width: 500px; height: 500; display: inline-block; border-style: dotted;"></div>
+	</div>
+</body>
+
+<script type="text/javascript" src="../../dist/MarineParser.min.js"></script>
+<script type="text/javascript">
+	/**
+	 * Copy all objects from MarineParser to global variable, its very simple to use
+	 * but I recommend you to develop your project with MarineParser with it
+	 * example
+	 * DNDFileList.LocalFile -> MarineParser.DNDFileList
+	 * SB.SeaParser -> MarineParser.SB.SeaParser
+	 * 
+	 * this code is just to test everything works fine
+	 * this may cause conflict problem with global object
+	 * A module doesn't have that kind of problem you can just load what you named
+	 **/
+	for(const [k, v] of Object.entries(MarineParser)) {
+		window[k] = v;
+	}
+</script>
+<script type="text/javascript">
+	
+	DNDLocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		// -- TODO must change the file name
+		const dndFL = new DNDFileList(['any']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			// -- Create array buffer Class
+			window.fileRead = ab;
+
+			// -- show buttons
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+		});
+	});
+
+	window.parseTest = () => {
+		console.log(window.fileRead);
+		alert(window.fileRead.byteLength);
+
+		const txtP = document.getElementById('areaText');
+		txtP.innerText = `File Read : ${window.fileRead.byteLength} bytes`;
+	}
+</script>
+</html>

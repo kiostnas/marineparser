@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Kongsberg MBES file parser</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+
+		.btnDraw {
+			display: none;
+		}
+
+		.info-box {
+			display: block;
+			width: 500px;
+			height: 350px;
+			border-style: solid;
+			border-width: 1px
+		}
+	</style>
+</head>
+<body>
+	<div>
+		<div id="areaFileGroup"></div>
+
+		<h1>Kongsberg MBES file parser</h1>
+		<span><button class="btnDraw" onclick="drawTest2D()">Draw 1px</button></span>
+		<span><button class="btnDraw" onclick="drawTest2D3px()">Draw 3px HSL</button></span>
+		<span><button class="btnDraw" onclick="drawTest2DSlow()">Draw Slow</button></span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept=".all" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div style="align-items: top; display: inline-flex;">
+		<canvas id="canvas" width="1000" height="1000"></canvas>
+		<div style="display: flex; flex-direction: column">
+			<span id="areaTextInfo" class="info-box"></span>
+			<span id="areaText" class="info-box" style="height: 240px"></span>
+			<div id="areaItems" class="info-box" style="height: 200px;">
+				<button onclick="console.log(itemLines)">log Info</button>
+			</div>
+		</div>
+	</div>
+</body>
+
+<script type="text/javascript">
+	// -- https://css-tricks.com/converting-color-spaces-in-javascript/
+	function HSLToHex(h,s,l) {
+		s /= 100;
+		l /= 100;
+
+		let c = (1 - Math.abs(2 * l - 1)) * s,
+			x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+			m = l - c/2,
+			r = 0,
+			g = 0,
+			b = 0;
+
+		if (0 <= h && h < 60) {
+			r = c; g = x; b = 0;
+		} else if (60 <= h && h < 120) {
+			r = x; g = c; b = 0;
+		} else if (120 <= h && h < 180) {
+			r = 0; g = c; b = x;
+		} else if (180 <= h && h < 240) {
+			r = 0; g = x; b = c;
+		} else if (240 <= h && h < 300) {
+			r = x; g = 0; b = c;
+		} else if (300 <= h && h < 360) {
+			r = c; g = 0; b = x;
+		}
+
+		r = Math.round((r + m) * 255);
+		g = Math.round((g + m) * 255);
+		b = Math.round((b + m) * 255);
+
+		// !! notice it is not rgb, bgr !!
+		// let rgb = 0xFF000000 | r << 16 | g << 8 | b;
+		let bgr = 0xFF000000 | b << 16 | g << 8 | r;
+		return bgr;
+	}
+
+	const hslColor = [];
+	for(let i = 0; i <= 300; i++) {
+		hslColor.push(HSLToHex(i, 50, 50));
+	}
+
+	// -- Saving Color Map
+	window.hslColorMap = hslColor; // 0 ~ 300
+	
+</script>
+<script type="module">
+	import {DNDFileList} from '../../jsm/frontend/DNDFileList.js';
+	import {Canvas2DPixel} from '../../jsm/Canvas2DPixel.js';
+	import {MPLog} from '../../jsm/MPLog.js';
+	import * as KB from '../../jsm/EMFileFormat.js';
+
+	DNDFileList.LocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		const dndFL = new DNDFileList(['all']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			// -- to debug
+			const ts = new MPLog();
+			ts.now('start to read');
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			ts.now('end to read array buffer');
+			ts.outconsole();
+			const all = new KB.EMAllBatch2020(ab);
+			delete window.fileRead;
+			window.fileRead = all;
+
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+		});
+	});
+
+	// -- set count type information
+	function setInfo(obj) {
+		const txtInfo = document.getElementById('areaTextInfo');
+
+		const str = [];
+		for(const [k, v] of Object.entries(obj)) {
+			if('invalid' === k) {
+				for(const [ik, iv] of Object.entries(obj[k])) {
+					str.push(`Invalid[${ik}] : ${iv}`);
+				}
+			} else {
+				str.push(`${k}: ${v}`);
+			}
+		}
+
+		txtInfo.innerText = str.join('\n');
+	}
+
+	// -- draw parsedDetail object line by line
+	function drawItem(item) {
+		const ts = item.getTimestamp().toISOString();
+		const d = item.parsedDetail;
+		const posD = item.referencedPos.parsedDetail;
+		const line = `[${d.pingCounter}] ${ts}, ${d.numValid} / ${d.numBeams}, ${~~d.freq}hz, at ${item.referencedPos.getPositionStr()}, ${posD.speed}cm/s`;
+
+		window.itemLines.push(line);
+	}
+
+	window.drawTest2D = () => {
+		const result = fileRead.batch20201109();
+		const minMax = result.minmax;
+		const latV = minMax.lat.max - minMax.lat.min;
+		const lngV = minMax.lng.max - minMax.lng.min;
+		const zV = minMax.z.max - minMax.z.min;
+
+		setInfo(result.types);
+
+		const c = new Canvas2DPixel('canvas');
+		c.newImage();
+		window.itemLines = [];
+
+		let i = 0;
+
+		const start = new Date().getTime();
+		fileRead.getXYZSource().forEach((item) => {
+			drawItem(item);
+			item.xyz.forEach((xyz) => {
+				const y = ~~((xyz.lat - minMax.lat.min) / latV * c.h);
+				const x = ~~((xyz.lng - minMax.lng.min) / lngV * c.w);
+				const color = (xyz.z - minMax.z.min) / zV * 255;
+
+				c.draw32(x, y, color << 24 || 0xFFFFFF);
+				i++;
+			});
+		});
+
+		c.putImage();
+		const end = new Date().getTime();
+
+		console.log(`done put image ${end - start}ms`);
+	}
+
+	window.drawTest2D3px = () => {
+		const result = fileRead.batch20201109();
+		const minMax = result.minmax;
+		const latV = minMax.lat.max - minMax.lat.min;
+		const lngV = minMax.lng.max - minMax.lng.min;
+		const zV = minMax.z.max - minMax.z.min;
+
+		setInfo(result.types);
+
+		const start = new Date().getTime();
+		const c = new Canvas2DPixel('canvas');
+		c.newImage();
+		window.itemLines = [];
+
+		let i = 0;
+
+		fileRead.getXYZSource().forEach((item) => {
+			drawItem(item);
+			item.xyz.forEach((xyz) => {
+				const y = ~~((xyz.lat - minMax.lat.min) / latV * c.h);
+				const x = ~~((xyz.lng - minMax.lng.min) / lngV * c.w);
+				const rgba = hslColorMap[~~((xyz.z - minMax.z.min) / zV * 300)];
+
+				c.draw32triple(x, y, rgba);
+				i++;
+			});
+		});
+
+		c.putImage();
+
+		const end = new Date().getTime();
+
+		console.log(`done put image ${end - start}ms`);
+	}
+
+	// -- Slowly
+	window.drawTest2DSlow = () => {
+		const result = fileRead.batch20201109();
+		const minMax = result.minmax;
+
+		const latV = minMax.lat.max - minMax.lat.min;
+		const lngV = minMax.lng.max - minMax.lng.min;
+		const zV = minMax.z.max - minMax.z.min;
+
+		setInfo(result.types);
+
+		const txtP = document.getElementById('areaText');
+
+		const start = new Date().getTime();
+		const c = new Canvas2DPixel('canvas');
+		c.newImage();
+		window.itemLines = [];
+
+		let i = 0;
+		let timeInterval = 10;
+		const listXYZSrc = fileRead.getXYZSource();
+
+		const funcRun = () => {
+			const data = listXYZSrc[i];
+			// -- Draw Text
+			const detail = data.parsedDetail;
+			const line = [
+				`Date: ${data.getTimestamp().toISOString()}`,
+				`Pos: ${data.referencedPos.getPositionStr()}`,
+				`Model / Serial: ${detail.model} / ${detail.serial}`,
+				`Ping Counter in File: ${i + 1} / ${listXYZSrc.length}`,
+				`Ping Counter in Project: ${detail.pingCounter}`,
+				`Valid: ${detail.body.length}`,
+				`Freq: ${detail.freq}Hz`,
+				`HDT: ${detail.heading / 100}Degree`,
+				`SoundSpeed: ${detail.ss / 10}m/s`
+			]
+			txtP.innerText = line.join('\n');
+
+			drawItem(data);
+
+			data.xyz.forEach((xyz) => {
+				const y = ~~((xyz.lat - minMax.lat.min) / latV * c.h);
+				const x = ~~((xyz.lng - minMax.lng.min) / lngV * c.w);
+				const rgba = hslColorMap[~~((xyz.z - minMax.z.min) / zV * 300)];
+
+				c.draw32triple(x, y, rgba);
+			});
+
+			c.putImage();
+
+			i++;
+
+			if(listXYZSrc.length > i) {
+				funcDoNext();
+			}
+		}
+
+		const funcDoNext = () => {
+			setTimeout(() => {
+				funcRun();
+			}, timeInterval);
+		}
+
+		funcRun();
+
+	}
+</script>
+
+</html>

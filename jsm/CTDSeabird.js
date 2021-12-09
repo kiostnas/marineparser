@@ -1,3 +1,13 @@
+import { MarineParserCommon } from './Common.js';
+
+// ##export="SeaSaveFileList:SB.SeaSaveFileList"
+// ##export="SeaSaveGroup:SB.SeaSaveGroup"
+// ##export="SeaSaveChild:SB.SeaSaveChild"
+// ##export="SeaSaveHex:SB.SeaSaveHex"
+// ##export="SeaSaveXMLCON:SB.SeaSaveXMLCON"
+// ##export="SeaConvert:SB.SeaConvert"
+// ##export="SeaParser:SB.SeaParser"
+
 export {SeaSaveFileList, SeaSaveGroup, SeaSaveChild, SeaSaveHex, SeaSaveXMLCON, SeaConvert, SeaParser};
 
 class SeaSaveFileList {
@@ -925,7 +935,7 @@ class SeaSaveXMLCON extends SeaSaveChild {
 				if(Array.isArray(found.coef)) {
 					found.coef.forEach(name => {
 						// -- req Misc.js
-						const value = getValueFromObject(child, name);
+						const value = MarineParserCommon.getValueFromObject(child, name);
 						if(!value || !value.hasOwnProperty('#text')) {
 							console.error(`SeaSaveXMLCON.parseSensor Invalid Coef`);
 							console.error(name);
@@ -937,7 +947,7 @@ class SeaSaveXMLCON extends SeaSaveChild {
 					// Object Type
 					Object.keys(found.coef).forEach(name => {
 						const exp = found.coef[name];
-						const value = getValueFromObject(child, exp);
+						const value = MarineParserCommon.getValueFromObject(child, exp);
 						if(!value || !value.hasOwnProperty('#text')) {
 							console.error(`SeaSaveXMLCON.parseSensor Invalid Coef`);
 							console.error(name);

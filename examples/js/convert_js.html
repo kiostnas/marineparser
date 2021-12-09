@@ -77,11 +77,26 @@
     </div>
 </body>
 
-<script type="text/javascript" src="./js/Misc.js"></script>
-<script type="module">
-	import {PD0Velocity} from './jsm/TDPD0.js';
+<script type="text/javascript" src="../../dist/MarineParser.min.js"></script>
+<script type="text/javascript">
+	/**
+	 * Copy all objects from MarineParser to global variable, its very simple to use
+	 * but I recommend you to develop your project with MarineParser with it
+	 * example
+	 * DNDFileList.LocalFile -> MarineParser.DNDFileList
+	 * SB.SeaParser -> MarineParser.SB.SeaParser
+	 * 
+	 * this code is just to test everything works fine
+ 	 * this may cause conflict problem with global object
+	 * A module doesn't have that kind of problem you can just load what you named
+	 **/
+	for(const [k, v] of Object.entries(MarineParser)) {
+		window[k] = v;
+	}
+</script>
+<script type="text/javascript">
 
-    window.DegreeToRange = PD0Velocity.DegreeToRange;
+    window.DegreeToRange = TD.PD0Velocity.DegreeToRange;
 
     window.onClickConvertXYMagDir = () => {
         const east = parseFloat(document.getElementById('xyEast').value);
@@ -99,7 +114,7 @@
             return;
         }
 
-        const result = PD0Velocity.XYMagDir(parseFloat(east), parseFloat(north));
+        const result = TD.PD0Velocity.XYMagDir(parseFloat(east), parseFloat(north));
 
         setResult(`Magnitude : ${result[0]}<br>Direction : ${result[1]} &deg;`);
     }
@@ -122,7 +137,7 @@
             return;
         }
 
-        const result = PD0Velocity.TrueWind(ws, wd, bs, bh);
+        const result = TD.PD0Velocity.TrueWind(ws, wd, bs, bh);
         setResult(`True wind speed : ${result[0]}<br>True wind direction : ${result[1]}&deg;`);
     }
 
@@ -147,7 +162,7 @@
         // -- Relative currents direction
         const rcd = (cd + 180 - bh) % 360;
 
-        const result = PD0Velocity.TrueWind(cs, rcd, bs, bh);
+        const result = TD.PD0Velocity.TrueWind(cs, rcd, bs, bh);
         setResult(`True currents speed : ${result[0]}<br>True currents direction : ${(result[1] + 180) % 360}&deg;`);
     }
 

@@ -1,0 +1,221 @@
+<html lang="en">
+	<!DOCTYPE html>
+<head>
+	<meta charset="UTF-8">
+	<title>CSV File parser</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+
+		.text-center {
+			text-align: center;
+		}
+
+		.textr {
+			text-align: right;
+			padding-right: 10%
+		}
+
+		.btn-file {
+			width: 200px;
+		}
+
+		.form-try-result {
+			width: 200px;
+			display: inline-block;
+		}
+	</style>
+</head>
+<body class="container-fluid">
+	<div id="areaFileGroup">
+	</div>
+	<div id="areaParserOptions">
+	</div>
+	<div id="drop-area" class="drop-area">
+		<form>
+			<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+			<br>
+			<input type="file" id="fileElem" multiple accept=".*" class="fileElem">
+			<label class="button" for="fileElem">Select some files</label>
+		</form>
+	</div>
+
+	<!-- Canvas -->
+	<canvas id="canvas" width="500" height="500"></canvas>
+</body>
+
+<script type="module">
+	import {DOMUtil, FileUtil, ScaleBox} from '../../jsm/frontend/Misc.js';
+	import {DNDFileList} from '../../jsm/frontend/DNDFileList.js';
+	import {Canvas2DPixel} from '../../jsm/Canvas2DPixel.js';
+	import * as TXT from '../../jsm/TXTCSV.js';
+
+	DNDFileList.LocalFile(document.getElementById('drop-area'), async (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		// -- set as global
+		window.droppedFiles = files;
+
+		const parentFileGroup = document.getElementById('areaFileGroup');
+		const parentParsers = document.getElementById('areaParserOptions')
+		parentFileGroup.innerHTML = ''; // Clear
+		parentParsers.innerHTML = '';
+
+		for(let file of files) {
+			const str = await FileUtil.readFileChunkString(file);
+			const tryResult = TXT.TXTCSVHelper.TryAll(str);
+
+			// -- Button
+			const btn = document.createElement('button');
+			btn.className = 'btn-file';
+			btn.innerText = file.name;
+			btn.addEventListener('click', async () => {
+				try {
+					const parsedData = await parseFile(file);
+					console.log(parsedData);
+
+					const checkedV = DOMUtil.GetChecked(file.name)[0].value;
+					if('Seapath' === checkedV) {
+						drawSeapathCanvas(parsedData);
+					}
+				} catch(e) {
+					console.error(`Failed to read file ${file.name}`);
+					console.info(e);
+				}
+			});
+			parentFileGroup.append(btn);
+
+			// -- Check Box
+			const f = createTryRadio(file.name, tryResult);
+			parentParsers.insertAdjacentHTML('beforeend', f);
+		}
+		return;
+	});
+
+	function createTryRadio(filename, tryResult) {
+		const form = `<form class="form-try-result">#radios#</form>`;
+		const listRadio = [];
+		const sorted = tryResult.sort((a, b) => b.valid - a.valid);
+		let checked = `checked='checked'`;
+		sorted.forEach((r) => {
+			const radio = `<label>
+				<input name="${filename}" type="radio" value="${r.title}" ${checked}>
+				${r.valid} : ${r.title}</label>`;
+			listRadio.push(radio);
+			checked = '';
+		});
+
+		const radios = listRadio.join('\n<br>\n');
+
+		const f = form.replace('#radios#', radios);
+
+		return f;
+	}
+
+	// -- f : filename or file object
+	async function parseFile(f) {
+		let fileObj = undefined;
+		if('object' === typeof f) {
+			// -- File object
+			fileObj = f;
+		} else {
+			fileObj = window.droppedFiles.find((file) => file.name === f);
+		}
+
+		// -- find the Radio value
+		const checked = DOMUtil.GetChecked(fileObj.name);
+		if(!checked || 0 === checked.length) {
+			console.error(`can not find checked radio with '${fileObj.name}'`);
+			return false;
+		}
+
+		// -- If no check? critical error
+		if(!checked) {
+			console.error(`can not find checked radio with '${fileObj.name}'`);
+			return false;
+		}
+
+		const parser = TXT.TXTCSVHelper.GetParserInstance(checked[0].value);
+		const string = await FileUtil.readFileString(fileObj);
+		parser.setDataSource(string)
+		const result = parser.parseBrief();
+
+		return result;
+	}
+
+	function drawSeapathCanvas(result) {
+		const canvas = new Canvas2DPixel('canvas');
+
+		const rangeW = [0, canvas.w];
+		// const rangeH = [0, canvas.h];
+		const rangeH = [0, canvas.h];
+
+		canvas.newImage();
+
+		let minLat = 999, maxLat = -999;
+		let minLng = 999, maxLng = -999;
+
+		// -- Min Max
+		result.forEach((gnss) => {
+			if(gnss.gga && gnss.gga.lat && gnss.gga.lng) {
+				if(!isNaN(gnss.gga.lat)) {
+					if(minLat > gnss.gga.lat) {
+						minLat = gnss.gga.lat;
+					}
+
+					if(maxLat < gnss.gga.lat) {
+						maxLat = gnss.gga.lat;
+					}
+				}
+
+				if(!isNaN(gnss.gga.lng)) {
+					if(minLng > gnss.gga.lng) {
+						minLng = gnss.gga.lng;
+					}
+
+					if(maxLng < gnss.gga.lng) {
+						maxLng = gnss.gga.lng;
+					}
+				}
+			}
+		});
+
+		// -- Consider just plus values
+		const scaleH = ScaleBox.ScaleLinear([minLat, maxLat], rangeH);
+		const scaleW = ScaleBox.ScaleLinear([minLng, maxLng], rangeW);
+
+		result.forEach((gnss) => {
+			const gga = gnss.gga;
+			const x = scaleW(gga.lng);
+			const y = scaleH(gga.lat);
+
+			canvas.draw32(~~x, ~~y, 0xFF0000FF);
+
+		})
+		// -- End of Canvas
+		canvas.putImage();
+	}
+
+</script>
+</html>

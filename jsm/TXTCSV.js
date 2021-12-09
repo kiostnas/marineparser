@@ -1,3 +1,9 @@
+// ##export="TXTCSVHelper:TXT.TXTCSVHelper"
+// ##export="TXTCSV:TXT.TXTCSV"
+// ##export="TXTCSVMap:TXT.TXTCSVMap"
+// ##export="TXTCSVSeapath:TXT.TXTCSVSeapath"
+// ##export="TXTCSVPCO2:TXT.TXTCSVPCO2"
+
 export { TXTCSVHelper, TXTCSV, TXTCSVMap, TXTCSVSeapath, TXTCSVPCO2 };
 
 class TXTCSV {

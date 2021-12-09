@@ -64,12 +64,26 @@
 	<canvas id="canvas" width="500" height="500"></canvas>
 </body>
 
-<script type="text/javascript" src="./js/Misc.js"></script>
-<script type="module">
-	import { TXTCSVHelper, TXTCSV, TXTCSVMap, TXTCSVSeapath, TXTCSVPCO2 } from './jsm/TXTCSV.js';
-	import { Canvas2DPixel } from './jsm/Canvas2DPixel.js';
+<script type="text/javascript" src="../../dist/MarineParser.min.js"></script>
+<script type="text/javascript">
+	/**
+	 * Copy all objects from MarineParser to global variable, its very simple to use
+	 * but I recommend you to develop your project with MarineParser with it
+	 * example
+	 * DNDFileList.LocalFile -> MarineParser.DNDFileList
+	 * SB.SeaParser -> MarineParser.SB.SeaParser
+	 * 
+	 * this code is just to test everything works fine
+	 * this may cause conflict problem with global object
+	 * A module doesn't have that kind of problem you can just load what you named
+	 **/
+	for(const [k, v] of Object.entries(MarineParser)) {
+		window[k] = v;
+	}
+</script>
+<script type="text/javascript">
 
-	DNDLocalFile(document.getElementById('drop-area'), async (files) => {
+	DNDFileList.LocalFile(document.getElementById('drop-area'), async (files) => {
 		// -- Hide drop area
 		document.getElementById('drop-area').style.display = 'none';
 
@@ -82,8 +96,8 @@
 		parentParsers.innerHTML = '';
 
 		for(let file of files) {
-			const str = await readFileChunkString(file);
-			const tryResult = TXTCSVHelper.TryAll(str);
+			const str = await FileUtil.readFileChunkString(file);
+			const tryResult = TXT.TXTCSVHelper.TryAll(str);
 
 			// -- Button
 			const btn = document.createElement('button');
@@ -94,7 +108,7 @@
 					const parsedData = await parseFile(file);
 					console.log(parsedData);
 
-					const checkedV = DOMGetChecked(file.name)[0].value;
+					const checkedV = DOMUtil.GetChecked(file.name)[0].value;
 					if('Seapath' === checkedV) {
 						drawSeapathCanvas(parsedData);
 					}
@@ -143,7 +157,7 @@
 		}
 
 		// -- find the Radio value
-		const checked = DOMGetChecked(fileObj.name);
+		const checked = DOMUtil.GetChecked(fileObj.name);
 		if(!checked || 0 === checked.length) {
 			console.error(`can not find checked radio with '${fileObj.name}'`);
 			return false;
@@ -155,8 +169,8 @@
 			return false;
 		}
 
-		const parser = TXTCSVHelper.GetParserInstance(checked[0].value);
-		const string = await readFileString(fileObj);
+		const parser = TXT.TXTCSVHelper.GetParserInstance(checked[0].value);
+		const string = await FileUtil.readFileString(fileObj);
 		parser.setDataSource(string)
 		const result = parser.parseBrief();
 
@@ -201,8 +215,8 @@
 		});
 
 		// -- Consider just plus values
-		const scaleH = scaleLinear([minLat, maxLat], rangeH);
-		const scaleW = scaleLinear([minLng, maxLng], rangeW);
+		const scaleH = ScaleBox.ScaleLinear([minLat, maxLat], rangeH);
+		const scaleW = ScaleBox.ScaleLinear([minLng, maxLng], rangeW);
 
 		result.forEach((gnss) => {
 			const gga = gnss.gga;

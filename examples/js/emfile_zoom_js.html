@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Kongsberg MBES file parser</title>
+	<style>
+		.drop-area {
+			border: 2px dashed #ccc;
+			border-radius: 20px;
+			width: 480px;
+			font-family: sans-serif;
+			margin: 100px auto;
+			padding: 20px;
+		}
+
+		.highlight {
+			border-color: purple;
+		}
+
+		.fileElem {
+			display: none;
+		}
+		.button {
+			border: 2px solid #4CAF50;
+			background-color: white;
+			color: black;
+			cursor: pointer;
+		}
+
+		.btnDraw {
+			display: none;
+		}
+
+		.info-box {
+			display: block;
+			width: 500px;
+			height: 350px;
+			border-style: solid;
+			border-width: 1px
+		}
+	</style>
+</head>
+<body>
+	<div>
+		<div id="areaFileGroup"></div>
+
+		<h1>Kongsberg MBES file parser</h1>
+		<button class="btnDraw" onclick="onClickZero()">ZERO</button>
+		<button class="btnDraw" onclick="zoomIn()">+</button>
+		<button class="btnDraw" onclick="zoomOut()">-</button>
+		<span class="btnDraw" id="txtPtM">Not Loaded</span>
+
+		<div id="drop-area" class="drop-area">
+			<form>
+				<span>Upload multiple files with the file dialog or by dragging and dropping</span>
+				<br>
+				<input type="file" id="fileElem" multiple accept=".all" class="fileElem">
+				<label class="button" for="fileElem">Select some files</label>
+			</form>
+		</div>
+	</div>
+
+	<div style="align-items: top; display: inline-flex;">
+		<canvas id="canvas" style="border: #000 solid 1px" width="1000" height="1000" onmousewheel="cmWheel(event)" onmousemove="cmMove(event)" onmousedown="cmDown(event)" onmouseup="cmUp()"></canvas>
+		<div style="display: flex; flex-direction: column">
+			<span id="areaTextInfo" class="info-box"></span>
+			<span id="areaText" class="info-box" style="height: 240px"></span>
+			<div id="areaItems" class="info-box" style="height: 200px;">
+				<button onclick="console.log(itemLines)">log Info</button>
+			</div>
+		</div>
+	</div>
+
+</body>
+
+<script type="text/javascript">
+	// -- https://css-tricks.com/converting-color-spaces-in-javascript/
+	function HSLToHex(h,s,l) {
+		s /= 100;
+		l /= 100;
+
+		let c = (1 - Math.abs(2 * l - 1)) * s,
+			x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+			m = l - c/2,
+			r = 0,
+			g = 0,
+			b = 0;
+
+		if (0 <= h && h < 60) {
+			r = c; g = x; b = 0;
+		} else if (60 <= h && h < 120) {
+			r = x; g = c; b = 0;
+		} else if (120 <= h && h < 180) {
+			r = 0; g = c; b = x;
+		} else if (180 <= h && h < 240) {
+			r = 0; g = x; b = c;
+		} else if (240 <= h && h < 300) {
+			r = x; g = 0; b = c;
+		} else if (300 <= h && h < 360) {
+			r = c; g = 0; b = x;
+		}
+
+		r = Math.round((r + m) * 255);
+		g = Math.round((g + m) * 255);
+		b = Math.round((b + m) * 255);
+
+		// !! notice it is not rgb, bgr !!
+		// let rgb = 0xFF000000 | r << 16 | g << 8 | b;
+		let bgr = 0xFF000000 | b << 16 | g << 8 | r;
+		return bgr;
+	}
+
+	const hslColor = [];
+	for(let i = 0; i <= 300; i++) {
+		hslColor.push(HSLToHex(i, 50, 50));
+	}
+
+	// -- Saving Color Map
+	window.hslColorMap = hslColor; // 0 ~ 300
+	
+</script>
+<script type="text/javascript" src="../../dist/MarineParser.min.js"></script>
+<script type="text/javascript">
+	/**
+	 * Copy all objects from MarineParser to global variable, its very simple to use
+	 * but I recommend you to develop your project with MarineParser with it
+	 * example
+	 * DNDFileList.LocalFile -> MarineParser.DNDFileList
+	 * SB.SeaParser -> MarineParser.SB.SeaParser
+	 * 
+	 * this code is just to test everything works fine
+	 * this may cause conflict problem with global object
+	 * A module doesn't have that kind of problem you can just load what you named
+	 **/
+	for(const [k, v] of Object.entries(MarineParser)) {
+		window[k] = v;
+	}
+</script>
+<script type="text/javascript">
+
+	DNDFileList.LocalFile(document.getElementById('drop-area'), (files) => {
+		// -- Hide drop area
+		document.getElementById('drop-area').style.display = 'none';
+
+		const dndFL = new DNDFileList(['all']);
+
+		for(let file of files) {
+			dndFL.addFile(file);
+		}
+
+		// -- Should be called after addFile
+		dndFL.setButton('areaFileGroup', async (files) => {
+			// -- to debug
+			const ts = new MPLog();
+			ts.now('start to read');
+			const ab = await DNDFileList.readFileArrayBuffer(files[0]);
+			ts.now('end to read array buffer');
+			ts.outconsole();
+			const all = new KB.EMAllBatch2020(ab);
+			delete window.fileRead;
+			window.fileRead = all;
+			window.fileName = files[0].name;
+
+			const btns = document.getElementsByClassName('btnDraw');
+			for(let btn of btns) {
+				btn.style.display = 'inline-block';
+			}
+
+			// -- Auto load
+			load();
+		});
+	});
+
+	// -- set count type information
+	function setInfo(obj) {
+		const txtInfo = document.getElementById('areaTextInfo');
+
+		const str = [];
+		for(const [k, v] of Object.entries(obj)) {
+			if('invalid' === k) {
+				for(const [ik, iv] of Object.entries(obj[k])) {
+					str.push(`Invalid[${ik}] : ${iv}`);
+				}
+			} else {
+				str.push(`${k}: ${v}`);
+			}
+		}
+
+		txtInfo.innerText = str.join('\n');
+	}
+
+	// -- draw parsedDetail object line by line
+	function drawItem(item) {
+		const ts = item.getTimestamp().toISOString();
+		const d = item.parsedDetail;
+		const posD = item.referencedPos.parsedDetail;
+		const line = `[${d.pingCounter}] ${ts}, ${d.numValid} / ${d.numBeams}, ${~~d.freq}hz, at ${item.referencedPos.getPositionStr()}, ${posD.speed}cm/s`;
+
+		window.itemLines.push(line);
+	}
+	
+	window.loaded = {};
+	window.load = () => {
+		// -- If already loaded, ignore it
+		if(window.loaded[window.fileName]) {
+			return;
+		}
+
+		const result = fileRead.batch20210114();
+		window.loaded[window.fileName] = result;
+
+		const minMax = result.minMax;
+
+		// -- meters
+		const crossM = GeoSpatial.distance(minMax.lng[0], minMax.lat[0], minMax.lng[1], minMax.lat[1]) * 1000;
+		const x = GeoSpatial.distance(minMax.lng[0], minMax.lat[0], minMax.lng[0], minMax.lat[1]) * 1000;
+		const y = GeoSpatial.distance(minMax.lng[0], minMax.lat[0], minMax.lng[1], minMax.lat[0]) * 1000;
+
+		// -- Pixel to Meter
+		if(!window.hasOwnProperty('PtM')) {
+			window.lastPtM = 100;
+		}
+
+		window.offsetXY = [0, 0];
+
+		setInfo({
+			distanceX: `${x.toFixed(2)}meters`,
+			distanceY: `${y.toFixed(2)}meters`,
+		});
+
+		delete window.fileRead;
+
+		window.draw(window.lastPtM);
+	}
+
+	window.draw = (PtM) => {
+		window.lastPtM = PtM;
+
+		document.getElementById('txtPtM').innerText = `Meter/PX : ${PtM}`;
+
+		const minMax = {
+			lat: [360, -360],
+			lng: [360, -360],
+			z: [100000, -1]
+		};
+		
+		for(const [k, v] of Object.entries(window.loaded)) {
+			minMax.lat[0] = minMax.lat[0] > v.minMax.lat[0] ? v.minMax.lat[0] : minMax.lat[0];
+			minMax.lat[1] = minMax.lat[1] < v.minMax.lat[1] ? v.minMax.lat[1] : minMax.lat[1];
+			minMax.lng[0] = minMax.lng[0] > v.minMax.lng[0] ? v.minMax.lng[0] : minMax.lng[0];
+			minMax.lng[1] = minMax.lng[1] < v.minMax.lng[1] ? v.minMax.lng[1] : minMax.lng[1];
+			minMax.z[0] = minMax.z[0] > v.minMax.z[0] ? v.minMax.z[0] : minMax.z[0];
+			minMax.z[1] = minMax.z[1] < v.minMax.z[1] ? v.minMax.z[1] : minMax.z[1];
+		}
+
+		// -- meters
+		const crossM = GeoSpatial.distance(minMax.lng[0], minMax.lat[0], minMax.lng[1], minMax.lat[1]) * 1000;
+		const x = GeoSpatial.distance(minMax.lng[0], minMax.lat[0], minMax.lng[0], minMax.lat[1]) * 1000;
+		const y = GeoSpatial.distance(minMax.lng[0], minMax.lat[0], minMax.lng[1], minMax.lat[0]) * 1000;
+
+		const width = ~~(x / PtM);
+		const height = ~~(y / PtM);
+
+		const scaleX = ScaleBox.ScaleLinear(minMax.lng, [0, width]);
+		const scaleY = ScaleBox.ScaleLinear(minMax.lat, [0, height]);
+		const scaleZ = ScaleBox.ScaleLinear(minMax.z, [0, 300]);
+
+		const c = new Canvas2DPixel('canvas');
+		c.newImage();
+
+		let countIgnore = 0;
+
+		for(const [k, v] of Object.entries(window.loaded)) {
+			v.xyz.forEach((line) => {
+				line.forEach((xyz) => {
+					const y = ~~scaleY(xyz[0]) + offsetXY[1];
+					const x = ~~scaleX(xyz[1]) + offsetXY[0];
+					const z = ~~scaleZ(xyz[2]);
+					const rgba = hslColorMap[z];
+
+					if(x < 0 || x > 1000 || y < 0 || y > 1000) {
+						countIgnore++;
+						return;
+					}
+
+					c.draw32triple(x, y, rgba);
+				});
+			});
+		}
+
+		// fileRead.getXYZSource().forEach((item) => {
+		// 	item.xyz.forEach((xyz) => {
+		// 		const x = ~~scaleX(xyz.lng) + offsetXY[0];
+		// 		const y = ~~scaleY(xyz.lat) + offsetXY[1];
+		// 		const z = ~~scaleZ(xyz.z);
+		// 		const rgba = hslColorMap[z];
+
+		// 		if(x < 0 || x > 1000 || y < 0 || y > 1000) {
+		// 			countIgnore++;
+		// 			return;
+		// 		}
+
+		// 		c.draw32triple(x, y, rgba);
+		// 	});
+		// });
+
+		c.putImage();
+
+		window.lastCanvas = c;
+
+		console.log(`countIgnore ${countIgnore}`);
+	}
+
+	window.offsetXY = [0, 0];
+
+	// -- Reset Position
+	window.onClickZero = () => {
+		window.offsetXY = [0, 0];
+		window.draw(100);
+	}
+
+	window.zoomIn = (e) => {
+		let step = 5;
+		if(lastPtM <= 1) {
+			step = 0.1;
+		} else if(lastPtM <= 10) {
+			step = 1;
+		}
+
+		const PtM = parseFloat((window.lastPtM - step).toFixed(2));
+
+		if(PtM > 0) {
+			window.draw(PtM);
+		}
+	}
+
+	window.zoomOut = (e) => {
+		let step = 5;
+		if(lastPtM <= 1) {
+			step = 0.1;
+		} else if(lastPtM <= 10) {
+			step = 1;
+		}
+
+		const PtM = parseFloat((window.lastPtM + step).toFixed(2));
+
+		if(PtM < 1000) {
+			window.draw(PtM);
+		}
+	}
+
+	window.cmWheel = (e) => {
+		if(!window.hasOwnProperty('lastPtM')) {
+			return;
+		}
+
+		if(0 > e.deltaY) {
+			zoomIn(e);
+		} else {
+			zoomOut(e);
+		}
+
+		e.preventDefault();
+	}
+
+	window.cmDown = (e) => {
+		window.canvasMouse = [e.offsetX, e.offsetY];
+
+		const image = lastCanvas.ctx.getImageData(offsetXY[0], offsetXY[1], lastCanvas.w - offsetXY[0], lastCanvas.h - offsetXY[1]);
+		window.canvasImage = image;
+	}
+
+	window.cmUp = () => {
+		delete window.canvasMouse;
+		delete window.canvasImage;
+
+		window.draw(lastPtM);
+	}
+
+	window.cmMove = (e) => {
+		if(!window.hasOwnProperty('canvasMouse')) {
+			return;
+		}
+
+		window.offsetXY[0] = offsetXY[0] + e.movementX;
+		window.offsetXY[1] = offsetXY[1] + e.movementY;
+		
+		lastCanvas.ctx.clearRect(0, 0, lastCanvas.w, lastCanvas.h);
+		lastCanvas.ctx.putImageData(window.canvasImage, offsetXY[0], offsetXY[1]);
+	}
+</script>
+
+</html>

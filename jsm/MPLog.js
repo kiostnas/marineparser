@@ -1,3 +1,4 @@
+// ##export="MPLog:MPLog"
 export {MPLog};
 
 /**

@@ -1,3 +1,4 @@
+// ##export="EndianDataView:EndianDataView"
 export {EndianDataView}
 
 // -- Just not to use little endian all the time

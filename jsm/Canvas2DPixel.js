@@ -1,3 +1,4 @@
+// ##export="Canvas2DPixel:Canvas2DPixel"
 export {Canvas2DPixel}
 
 class Canvas2DPixel {

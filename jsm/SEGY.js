@@ -1,5 +1,8 @@
 import {EndianDataView} from './EndianDataView.js';
 
+// ##export="SegYDataView:SEGY.SegYDataView"
+// ##export="SegY:SEGY.SegY"
+
 // -- Class order critical
 export {SegYDataView, SegY};
 
