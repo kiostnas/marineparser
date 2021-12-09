@@ -223,7 +223,7 @@ class Degree2Pixel {
 	 * positibe : b is below a
 	 * negative : b is above a
 	 **/
-	static diffY(a, b) {
+	static DiffY(a, b) {
 		return (b - a) * -1;
 	}
 
@@ -233,7 +233,7 @@ class Degree2Pixel {
 	}
 
 	getPixelLat(lat) {
-		const dy = Degree2Pixel.diffY(this.centerPos[0], lat);
+		const dy = Degree2Pixel.DiffY(this.centerPos[0], lat);
 		return ~~(this.mapPixel[1] + dy * this.yUnit);
 	}
 
