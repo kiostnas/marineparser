@@ -272,6 +272,37 @@ class Degree2Pixel {
 		this.zoomLevel = this.zoomLevel - 1;
 		this.calculateZoomDistance();
 	}
+
+	// -- [[lat, lng], [lat, lng],...]
+	zoomAdjust(...positions) {
+		const listLat = positions.map(p => p[0]);
+		const listLng = positions.map(p => p[1]);
+
+		const min = [Math.min(...listLat), Math.min(...listLng)];
+		const max = [Math.max(...listLat), Math.max(...listLng)];
+
+		const diffY = Degree2Pixel.DiffY(min[0], max[0]);
+		const diffX = Degree2Pixel.DiffX(min[1], max[1]);
+
+		const centerPos = [min[0] + Math.abs(diffY / 2), min[1] + Math.abs(diffX / 2)];
+
+		this.setCenterPos(centerPos);
+		let zoomLevel = 10;
+		for (; zoomLevel > -100; zoomLevel--) {
+			this.zoom(zoomLevel);
+
+			const pLat = d2p.getPixelLat(min[0]);
+			const pLng = d2p.getPixelLng(min[1]);
+
+			if (pLat < 0 || pLng < 0 || pLat > this.mapSize[1] || pLng > this.mapSize[0]) {
+				break;
+			}
+		}
+
+		zoomLevel++;
+		this.zoom(zoomLevel);
+		return zoomLevel;
+	}
 }
 
 /**
