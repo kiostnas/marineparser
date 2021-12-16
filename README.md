@@ -7,8 +7,8 @@
 
 ## Live demo
 
-[link to live demo - marineparser](http://dm1489986934346.fun25.co.kr/marineparser/)
-[link to live demo - marineparser extended](http://dm1489986934346.fun25.co.kr/marineparserex/)
+* [link to live demo - marineparser](http://dm1489986934346.fun25.co.kr/marineparser/)
+* [link to live demo - marineparser extended](http://dm1489986934346.fun25.co.kr/marineparserex/)
 
 ## Multibeam
 * Kongsberg EM series 'ALL' files
