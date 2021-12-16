@@ -3,11 +3,12 @@
 ## Purpose
 * For the benefit of all.
 * Parse all the marine observation EQs raw data with pure javascript.
-* Drawing is not the scope of this project -> 3D Multibeam is not included but will start another repository soon
+* Drawing is not the scope of this project -> implemented at [marineparserex](https://github.com/kiostnas/marineparserex)
 
 ## Live demo
 
 [link to live demo - marineparser](http://dm1489986934346.fun25.co.kr/marineparser/)
+[link to live demo - marineparser extended](http://dm1489986934346.fun25.co.kr/marineparserex/)
 
 ## Multibeam
 * Kongsberg EM series 'ALL' files
