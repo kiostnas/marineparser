@@ -547,6 +547,8 @@ class EMAllBatch2020 extends EMAll {
 		this.listXYZ = [];
 		this.listDD = []; // -- Old format
 		this.listPosition = [];
+		this.listParamsInstall = [];
+		this.listParamsRuntime = [];
 
 		while(offset < this.byteLength) {
 			const r = this.parseBrief(offset);
@@ -579,6 +581,10 @@ class EMAllBatch2020 extends EMAll {
 					this.listDD.push(instance);
 				} else if(0x50 === detail.type) {
 					this.listPosition.push(instance);
+				} else if(!this.paramsRuntime && 0x52 === detail.type) {
+					this.listParamsRuntime.push(instance);
+				} else if(!this.paramsInstall && (0x49 === detail.type || 0x69 === detail.type || 0x70 === detail.type)) {
+					this.listParamsInstall.push(instance);
 				}
 			}
 
@@ -818,6 +824,61 @@ class EMAllBatch2020 extends EMAll {
 			minMax: minMax,
 			xyz: shrink.xyz
 		}
+
+		return result;
+	}
+
+	// -- Brief of this file
+	batch202111221() {
+		const result = {};
+		// -- can be faster if you do not parse all xyz and positions, b/c you want just first and the last
+		const types = this.batchSplitDataGrams();
+		result.types = types;
+
+		if(0 < this.listParamsInstall.length) {
+			result.install = this.listParamsInstall[0].parsedDetail;
+		}
+		if(0 < this.listParamsRuntime.length) {
+			result.runtime = this.listParamsRuntime[0].parsedDetail;
+		}
+		
+		const src = this.getXYZSource();
+		const firstXYZ = src[0];
+		const lastXYZ = src[src.length - 1];
+
+		let firstZ = -1;
+		if(2 <= firstXYZ.parsedDetail.body.length) {
+			firstZ = firstXYZ.parsedDetail.txTRDepth + firstXYZ.parsedDetail.body[~~(firstXYZ.parsedDetail.body.length / 2)].z;
+			// console.log('\n\n\nFirst Z Debug');
+			// console.log(firstXYZ.parsedDetail.txTRDepth);
+			// console.log(firstXYZ.parsedDetail.body[~~(firstXYZ.parsedDetail.body.length / 2)].z);
+		}
+		
+		result.model = firstXYZ.parsedDetail.model;
+		result.serial = firstXYZ.parsedDetail.serial;
+		result.numBeams = firstXYZ.parsedDetail.numBeams;
+		result.numValid = firstXYZ.parsedDetail.numValid;
+		result.freq = firstXYZ.parsedDetail.freq;
+		result.pingCounter = firstXYZ.parsedDetail.pingCounter;
+		result.firstZ = firstZ; // almost center
+
+		const firstPos = this.listPosition[0];
+		const lastPos = this.listPosition[this.listPosition.length - 1];
+
+		result.pos1 = firstPos.getLatLng();
+		result.ts1 = firstPos.getTimestamp();
+
+		result.pos2 = lastPos.getLatLng();
+		result.ts2 = lastPos.getTimestamp();
+
+		result.logCount = src.length;
+
+
+		const posFirst = this.findNearestPosition(firstXYZ.parsedDetail.date, firstXYZ.parsedDetail.time);
+		const posLast = this.findNearestPosition(lastXYZ.parsedDetail.date, lastXYZ.parsedDetail.time);
+
+		firstXYZ.referencedPos = posFirst;
+		lastXYZ.referencePos = posLast;
 
 		return result;
 	}
