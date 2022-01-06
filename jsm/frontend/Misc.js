@@ -5,8 +5,9 @@
 // ##export="DOMUtil:DOMUtil"
 // ##export="FileUtil:FileUtil"
 // ##export="ScaleBox:ScaleBox"
+// ##export="ColorUtil:ColorUtil"
 
-export { DOMUtil, FileUtil, ScaleBox }
+export { DOMUtil, FileUtil, ScaleBox, ColorUtil }
 
 class DOMUtil {
 	static Span(str) {
@@ -114,7 +115,7 @@ class ScaleBox {
 	}
 
 	getReverse(name, value) {
-		if(this.obj[name]) {
+		if (this.obj[name]) {
 			return this.obj[name].reverseScale(value);
 		}
 
@@ -133,5 +134,70 @@ class ScaleBox {
 		if (this.obj[name]) {
 			return this.obj[name].range;
 		}
+	}
+}
+
+class ColorUtil {
+	// -- https://css-tricks.com/converting-color-spaces-in-javascript/
+	static HSLToHex(h, s, l) {
+		s /= 100;
+		l /= 100;
+
+		let c = (1 - Math.abs(2 * l - 1)) * s,
+			x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+			m = l - c / 2,
+			r = 0,
+			g = 0,
+			b = 0;
+
+		if (0 <= h && h < 60) {
+			r = c; g = x; b = 0;
+		} else if (60 <= h && h < 120) {
+			r = x; g = c; b = 0;
+		} else if (120 <= h && h < 180) {
+			r = 0; g = c; b = x;
+		} else if (180 <= h && h < 240) {
+			r = 0; g = x; b = c;
+		} else if (240 <= h && h < 300) {
+			r = x; g = 0; b = c;
+		} else if (300 <= h && h < 360) {
+			r = c; g = 0; b = x;
+		}
+
+		const rgb = { r: r, g: g, b: b };
+
+		const vr = Math.round((r + m) * 255);
+		const vg = Math.round((g + m) * 255);
+		const vb = Math.round((b + m) * 255);
+
+		// !! notice it is not rgb, bgr !!
+		let bgr = 0xFF000000 | vb << 16 | vg << 8 | vr;
+
+		return {
+			rgb: rgb,
+			bgr: bgr
+		}
+	}
+
+	static HSLModel(maxHue, s, l) {
+		const hslColor = [];
+		for(let i = 0; i <= maxHue; i++) {
+			hslColor.push(ColorUtil.HSLToHex(i, s, l));
+		}
+
+		return hslColor;
+	}
+
+	createHSLModel(maxHue, s, l) {
+		this.hslModel = ColorUtil.HSLModel(maxHue, s, l);
+	}
+
+	// -- no check! hahaha, can be danger
+	getABGRHSLModel(i) {
+		return this.hslModel[i].bgr;
+	}
+
+	getRGBHSLModel(i) {
+		return this.hslModel[i].rgb;
 	}
 }

@@ -21,6 +21,7 @@ class Canvas2DPixel {
 		}
 
 		this.canvas = canvas;
+		// -- do not use calculated value, this canvas should be explicit, hidden canvas is 0*0
 		this.w = this.canvas.width;
 		this.h = this.canvas.height;
 	}
@@ -78,6 +79,16 @@ class Canvas2DPixel {
 		this.imageData[index + 1] = color && 0x0000FF00 >> 8;  // G
 		this.imageData[index + 2] = color && 0x000000FF;       // B
 		this.imageData[index + 3] = color && 0xFF000000 >> 24; // Alpha
+	}
+
+	fill(Abgr) {
+		for(let i = 0; i < this.buf32.length; i++) {
+			this.buf32[i] = Abgr;
+		}
+	}
+	
+	fillBlack() {
+		this.fill(0xFF000000);
 	}
 
 	putImage() {

@@ -291,8 +291,8 @@ class Degree2Pixel {
 		for (; zoomLevel > -100; zoomLevel--) {
 			this.zoom(zoomLevel);
 
-			const pLat = d2p.getPixelLat(min[0]);
-			const pLng = d2p.getPixelLng(min[1]);
+			const pLat = this.getPixelLat(min[0]);
+			const pLng = this.getPixelLng(min[1]);
 
 			if (pLat < 0 || pLng < 0 || pLat > this.mapSize[1] || pLng > this.mapSize[0]) {
 				break;
@@ -302,6 +302,37 @@ class Degree2Pixel {
 		zoomLevel++;
 		this.zoom(zoomLevel);
 		return zoomLevel;
+	}
+
+	// -- [0, 0] to [mapSize, mapSize] as coordinates, to know the boundaries of the rectangle
+	getBounds() {
+		const result = {left: undefined, top: undefined, right: undefined, bottom: undefined};
+
+		const latM = this.centerPos[0] - (this.mapPixel[1] / this.yUnit);
+		const latP = this.centerPos[0] + (this.mapPixel[1] / this.yUnit);
+		const lngM = this.centerPos[1] - (this.mapPixel[0] / this.xUnit);
+		const lngP = this.centerPos[1] + (this.mapPixel[0] / this.xUnit);
+
+		const boundsLatM = this.getPixelLat(latM);
+		const boundsLngtM = this.getPixelLng(lngM);
+
+		if(0 === boundsLatM) {
+			result.top = latM;
+			result.bottom = latP;
+		} else {
+			result.top = latP;
+			result.bottom = latM;
+		}
+
+		if(0 === boundsLngtM) {
+			result.left = lngM;
+			result.right = lngP;
+		} else {
+			result.left = lngP;
+			result.right = lngM;
+		}
+
+		return result;
 	}
 }
 
