@@ -825,6 +825,7 @@ class PD0Status extends PD0 {
 	}
 }
 
+// -- manual is different from 2021 version to 2014 version, OS and WH is different
 class PD0BottomTrack extends PD0 {
 	static BT_DATA = new Map([
 		['hID', 'U2'], // 0x0600
@@ -1223,6 +1224,21 @@ class TDPD0 extends EndianDataView {
 		}
 
 		console.timeEnd();
+	}
+
+	batchFirstLast() {
+		// -- list them all
+		this.parseBrief(0);
+
+		const pd0First = this.parsedBrief[0];
+		pd0First.parseBrief();
+		pd0First.parseDetail();
+
+		const pd0Last = this.parsedBrief[this.parsedBrief.length - 1];
+		pd0Last.parseBrief();
+		pd0Last.parseDetail();
+
+		return {pd0First, pd0Last};
 	}
 
 	debug20210601() {
