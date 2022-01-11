@@ -39,6 +39,37 @@ class DOMUtil {
 	
 		return checked;
 	}
+
+	// DOMUtil.ParseURL(location.search);
+	static ParseURL(url) {
+		const str = decodeURI(url);
+		const r = {
+			path: str,
+			strArgs: '',
+			args: {},
+		}
+		
+		if(-1 === str.indexOf('?')) {
+			return r;
+		}
+	
+		const m = str.match(/^(.*)\?(.*)$/);
+		r.path = m[1];
+		r.strArgs = m[2];
+		r.args = {};
+	
+		const args = m[2].split('&');
+		args.forEach(arg => {
+			const p1 = arg.split('=');
+			if(2 === p1.length) {
+				r.args[p1[0]] = p1[1];
+			} else if(1 === p1.length) {
+				r.args[p1[0]] = '';
+			}
+		});
+	
+		return r;
+	}
 }
 
 class FileUtil {
