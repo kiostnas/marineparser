@@ -1,4 +1,9 @@
-# Marine raw data parser
+# Deprecated repository
+* repository moved to [marineparser](https://github.com/heosd/marineparser)
+* thank you
+
+
+### Marine raw data parser
 
 ## Purpose
 * For the benefit of all.
